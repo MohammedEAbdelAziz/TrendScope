@@ -8,8 +8,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: sentiment-backend
-    ports:
-      - "8000:8000"
+    # No ports exposed - accessed internally by frontend
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -79,8 +78,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: sentiment-redis
-    ports:
-      - "6379:6379"
+    # No ports exposed - Redis only needs internal network access
     volumes:
       - redis-data:/data
     restart: unless-stopped
