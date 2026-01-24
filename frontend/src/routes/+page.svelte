@@ -196,36 +196,43 @@
 
 <div class="min-h-screen bg-[#0a0f1a]">
   <!-- Header -->
-  <header class="border-b border-slate-800 bg-[#0d1320] px-6 py-4">
-    <div class="flex items-center justify-between max-w-[1600px] mx-auto">
+  <header
+    class="border-b border-slate-800 bg-[#0d1320] px-4 md:px-6 py-3 md:py-4"
+  >
+    <div
+      class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 max-w-[1600px] mx-auto"
+    >
       <div class="flex items-center gap-3">
         <div
-          class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center"
+          class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0"
         >
           <BarChart3 class="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 class="text-lg font-semibold text-white">
+          <h1 class="text-base md:text-lg font-semibold text-white">
             Enterprise Sentiment Monitor
           </h1>
-          <p class="text-xs text-slate-400">Global Economic Intelligence</p>
+          <p class="text-xs text-slate-400 hidden sm:block">
+            Global Economic Intelligence
+          </p>
         </div>
       </div>
-      <div class="flex items-center gap-6">
+      <div class="flex items-center gap-3 md:gap-6 flex-wrap">
         <div class="flex items-center gap-2">
           <Activity class="w-4 h-4 text-emerald-500 animate-pulse" />
-          <span class="text-sm text-slate-400">System Operational</span>
+          <span class="text-xs md:text-sm text-slate-400 hidden sm:inline"
+            >System Operational</span
+          >
         </div>
-        <div class="flex items-center gap-2 text-sm text-slate-400">
+        <div class="flex items-center gap-2 text-xs md:text-sm text-slate-400">
           <Clock class="w-4 h-4" />
-          <span
-            >Last Updated: <span class="text-amber-400 font-medium"
-              >{lastUpdated.toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-                timeZoneName: "short",
-              })}</span
-            ></span
+          <span class="hidden sm:inline">Last Updated: </span>
+          <span class="text-amber-400 font-medium"
+            >{lastUpdated.toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZoneName: "short",
+            })}</span
           >
         </div>
         <Button
@@ -235,132 +242,190 @@
           disabled={isLoading}
           class="border-slate-700 bg-slate-800 hover:bg-slate-700 text-white"
         >
-          <RefreshCw class="w-4 h-4 mr-2" /> Refresh
+          <RefreshCw class="w-4 h-4 md:mr-2" />
+          <span class="hidden md:inline">Refresh</span>
         </Button>
       </div>
     </div>
   </header>
 
-  <main class="max-w-[1600px] mx-auto p-6">
+  <main class="max-w-[1600px] mx-auto p-4 md:p-6">
     {#if error}
-      <Card class="p-8 bg-rose-950/30 border-rose-800/50 text-center">
-        <h2 class="text-xl font-semibold text-rose-400">Connection Error</h2>
-        <p class="text-slate-400 mt-2">{error}</p>
+      <Card class="p-6 md:p-8 bg-rose-950/30 border-rose-800/50 text-center">
+        <h2 class="text-lg md:text-xl font-semibold text-rose-400">
+          Connection Error
+        </h2>
+        <p class="text-slate-400 mt-2 text-sm md:text-base">{error}</p>
         <Button onclick={loadData} class="mt-4">Try Again</Button>
       </Card>
     {:else}
-      <div class="grid grid-cols-12 gap-6">
-        <!-- Left Sidebar - Region Cards -->
-        <div class="col-span-3 space-y-3">
+      <div class="flex flex-col lg:grid lg:grid-cols-12 gap-4 md:gap-6">
+        <!-- Region Selector - Horizontal scroll on mobile, sidebar on desktop -->
+        <div class="lg:col-span-3 order-1 lg:order-none">
           <h2
-            class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4"
+            class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 md:mb-4"
           >
             Select Region
           </h2>
 
-          {#each REGION_CONFIGS as config}
-            {@const region = regions.find((r) => r.region_id === config.id)}
-            {@const colors = region
-              ? sentimentColors[region.sentiment_label]
-              : sentimentColors.neutral}
-            {@const isSelected = selectedRegionId === config.id}
-            {@const IconComponent = iconComponents[config.icon]}
+          <!-- Mobile: Horizontal scroller with compact cards -->
+          <div
+            class="flex lg:hidden gap-3 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory"
+            style="-webkit-overflow-scrolling: touch;"
+          >
+            {#each REGION_CONFIGS as config}
+              {@const region = regions.find((r) => r.region_id === config.id)}
+              {@const colors = region
+                ? sentimentColors[region.sentiment_label]
+                : sentimentColors.neutral}
+              {@const isSelected = selectedRegionId === config.id}
+              {@const IconComponent = iconComponents[config.icon]}
 
-            <button
-              onclick={() => selectRegion(config.id)}
-              class="w-full text-left p-4 rounded-lg border transition-all duration-200
-                {isSelected
-                ? 'bg-slate-800/80 border-blue-500'
-                : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800/50 hover:border-slate-700'}"
-            >
-              <div class="flex items-center gap-3 mb-3">
-                <div
-                  class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center"
-                >
-                  <IconComponent class="w-4 h-4 text-slate-300" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <h3 class="font-semibold text-white text-sm">
+              <button
+                onclick={() => selectRegion(config.id)}
+                class="flex-shrink-0 w-36 text-left p-3 rounded-lg border transition-all duration-200 snap-start
+                  {isSelected
+                  ? 'bg-slate-800/80 border-blue-500'
+                  : 'bg-slate-900/50 border-slate-800'}"
+              >
+                <div class="flex items-center gap-2 mb-2">
+                  <div
+                    class="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0"
+                  >
+                    <IconComponent class="w-3.5 h-3.5 text-slate-300" />
+                  </div>
+                  <h3 class="font-semibold text-white text-xs truncate">
                     {config.name}
                   </h3>
-                  <p class="text-xs text-slate-500 truncate">
-                    {config.description}
-                  </p>
                 </div>
-                {#if isSelected}
-                  <Circle class="w-2 h-2 text-amber-500 fill-amber-500" />
+
+                {#if region}
+                  <div class="flex items-center justify-between">
+                    <span class="text-lg font-bold {colors.text}"
+                      >{region.sentiment_score.toFixed(0)}%</span
+                    >
+                    {#if isSelected}
+                      <Circle class="w-2 h-2 text-amber-500 fill-amber-500" />
+                    {/if}
+                  </div>
+                {:else if isLoading}
+                  <div class="animate-pulse">
+                    <div class="h-6 bg-slate-800 rounded w-16"></div>
+                  </div>
                 {/if}
-              </div>
+              </button>
+            {/each}
+          </div>
 
-              {#if region}
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-2xl font-bold {colors.text}"
-                    >{region.sentiment_score.toFixed(0)}%</span
-                  >
-                  <Badge class="{colors.bg} {colors.text} uppercase text-xs"
-                    >{getSentimentLabel(region.sentiment_label)}</Badge
-                  >
-                </div>
+          <!-- Desktop: Vertical sidebar cards -->
+          <div class="hidden lg:flex lg:flex-col space-y-3">
+            {#each REGION_CONFIGS as config}
+              {@const region = regions.find((r) => r.region_id === config.id)}
+              {@const colors = region
+                ? sentimentColors[region.sentiment_label]
+                : sentimentColors.neutral}
+              {@const isSelected = selectedRegionId === config.id}
+              {@const IconComponent = iconComponents[config.icon]}
 
-                <!-- Optimistic vs Pessimistic Bar -->
-                <div class="h-2 rounded-full bg-slate-800 overflow-hidden flex">
-                  {#if region.bull_count + region.bear_count > 0}
-                    <div
-                      class="h-full bg-emerald-500 transition-all duration-500"
-                      style="width: {(region.bull_count /
-                        (region.bull_count + region.bear_count)) *
-                        100}%"
-                    ></div>
-                    <div
-                      class="h-full bg-rose-500 transition-all duration-500"
-                      style="width: {(region.bear_count /
-                        (region.bull_count + region.bear_count)) *
-                        100}%"
-                    ></div>
-                  {:else}
-                    <div class="h-full bg-amber-500 w-full"></div>
+              <button
+                onclick={() => selectRegion(config.id)}
+                class="w-full text-left p-4 rounded-lg border transition-all duration-200
+                  {isSelected
+                  ? 'bg-slate-800/80 border-blue-500'
+                  : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800/50 hover:border-slate-700'}"
+              >
+                <div class="flex items-center gap-3 mb-3">
+                  <div
+                    class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center"
+                  >
+                    <IconComponent class="w-4 h-4 text-slate-300" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-white text-sm">
+                      {config.name}
+                    </h3>
+                    <p class="text-xs text-slate-500 truncate">
+                      {config.description}
+                    </p>
+                  </div>
+                  {#if isSelected}
+                    <Circle class="w-2 h-2 text-amber-500 fill-amber-500" />
                   {/if}
                 </div>
 
-                <div class="flex items-center justify-between mt-2">
-                  <span class="text-xs text-slate-500"
-                    >{region.headline_count} headlines</span
-                  >
-                  <span class="text-xs text-slate-500">
-                    <span class="text-emerald-400"
-                      >{region.bull_count} opt.</span
+                {#if region}
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-2xl font-bold {colors.text}"
+                      >{region.sentiment_score.toFixed(0)}%</span
                     >
-                    <span class="mx-1">|</span>
-                    <span class="text-rose-400">{region.bear_count} pes.</span>
-                  </span>
-                </div>
-              {:else if isLoading}
-                <div class="animate-pulse space-y-2">
-                  <div class="h-8 bg-slate-800 rounded"></div>
-                  <div class="h-2 bg-slate-800 rounded"></div>
-                </div>
-              {/if}
-            </button>
-          {/each}
+                    <Badge class="{colors.bg} {colors.text} uppercase text-xs"
+                      >{getSentimentLabel(region.sentiment_label)}</Badge
+                    >
+                  </div>
+
+                  <!-- Optimistic vs Pessimistic Bar -->
+                  <div
+                    class="h-2 rounded-full bg-slate-800 overflow-hidden flex"
+                  >
+                    {#if region.bull_count + region.bear_count > 0}
+                      <div
+                        class="h-full bg-emerald-500 transition-all duration-500"
+                        style="width: {(region.bull_count /
+                          (region.bull_count + region.bear_count)) *
+                          100}%"
+                      ></div>
+                      <div
+                        class="h-full bg-rose-500 transition-all duration-500"
+                        style="width: {(region.bear_count /
+                          (region.bull_count + region.bear_count)) *
+                          100}%"
+                      ></div>
+                    {:else}
+                      <div class="h-full bg-amber-500 w-full"></div>
+                    {/if}
+                  </div>
+
+                  <div class="flex items-center justify-between mt-2">
+                    <span class="text-xs text-slate-500"
+                      >{region.headline_count} headlines</span
+                    >
+                    <span class="text-xs text-slate-500">
+                      <span class="text-emerald-400"
+                        >{region.bull_count} opt.</span
+                      >
+                      <span class="mx-1">|</span>
+                      <span class="text-rose-400">{region.bear_count} pes.</span
+                      >
+                    </span>
+                  </div>
+                {:else if isLoading}
+                  <div class="animate-pulse space-y-2">
+                    <div class="h-8 bg-slate-800 rounded"></div>
+                    <div class="h-2 bg-slate-800 rounded"></div>
+                  </div>
+                {/if}
+              </button>
+            {/each}
+          </div>
         </div>
 
         <!-- Center Content -->
-        <div class="col-span-6 space-y-6">
+        <div class="lg:col-span-6 space-y-4 md:space-y-6 order-2 lg:order-none">
           {#if selectedRegion && selectedConfig}
             {@const SelectedIcon = iconComponents[selectedConfig.icon]}
 
             <!-- Title Section -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3 md:gap-4">
               <div
-                class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center"
+                class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0"
               >
-                <SelectedIcon class="w-6 h-6 text-blue-400" />
+                <SelectedIcon class="w-5 h-5 md:w-6 md:h-6 text-blue-400" />
               </div>
               <div>
-                <h2 class="text-2xl font-bold text-white">
+                <h2 class="text-lg md:text-2xl font-bold text-white">
                   {selectedConfig.name} Sentiment Analysis
                 </h2>
-                <p class="text-slate-400 text-sm">
+                <p class="text-slate-400 text-xs md:text-sm hidden sm:block">
                   Real-time AI analysis of economic news, market reports, and
                   trade policies.
                 </p>
@@ -373,11 +438,13 @@
             </div>
 
             <!-- Sentiment Overview Card -->
-            <Card class="p-6 bg-slate-900/50 border-slate-800">
-              <div class="flex items-start justify-between">
-                <!-- Donut Chart -->
-                <div class="flex items-center gap-8">
-                  <div class="relative w-48 h-48">
+            <Card class="p-4 md:p-6 bg-slate-900/50 border-slate-800">
+              <div
+                class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-0"
+              >
+                <!-- Donut Chart + Stats -->
+                <div class="flex items-center gap-4 md:gap-8">
+                  <div class="relative w-28 h-28 md:w-48 md:h-48 flex-shrink-0">
                     <svg viewBox="0 0 100 100" class="w-full h-full -rotate-90">
                       <circle
                         cx="50"
@@ -404,11 +471,11 @@
                     <div
                       class="absolute inset-0 flex flex-col items-center justify-center"
                     >
-                      <span class="text-4xl font-bold text-white"
+                      <span class="text-2xl md:text-4xl font-bold text-white"
                         >{selectedRegion.sentiment_score.toFixed(0)}%</span
                       >
                       <span
-                        class="text-sm font-medium uppercase tracking-wider {sentimentColors[
+                        class="text-xs md:text-sm font-medium uppercase tracking-wider {sentimentColors[
                           selectedRegion.sentiment_label
                         ].text}"
                       >
@@ -418,14 +485,17 @@
                   </div>
 
                   <!-- Stats -->
-                  <div class="space-y-4">
+                  <div class="flex md:flex-col gap-4 md:space-y-4">
                     <div>
                       <p
                         class="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1"
                       >
-                        <TrendingUp class="w-3 h-3" /> Optimistic
+                        <TrendingUp class="w-3 h-3" />
+                        <span class="hidden sm:inline">Optimistic</span><span
+                          class="sm:hidden">Opt</span
+                        >
                       </p>
-                      <p class="text-3xl font-bold text-emerald-400">
+                      <p class="text-xl md:text-3xl font-bold text-emerald-400">
                         {selectedRegion.bull_count}
                       </p>
                     </div>
@@ -433,13 +503,16 @@
                       <p
                         class="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1"
                       >
-                        <TrendingDown class="w-3 h-3" /> Pessimistic
+                        <TrendingDown class="w-3 h-3" />
+                        <span class="hidden sm:inline">Pessimistic</span><span
+                          class="sm:hidden">Pes</span
+                        >
                       </p>
-                      <p class="text-3xl font-bold text-rose-400">
+                      <p class="text-xl md:text-3xl font-bold text-rose-400">
                         {selectedRegion.bear_count}
                       </p>
                     </div>
-                    <div>
+                    <div class="hidden md:block">
                       <p
                         class="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1"
                       >
@@ -453,7 +526,7 @@
                 </div>
 
                 <!-- Sentiment Balance Visualization -->
-                <div class="flex-1 ml-8">
+                <div class="flex-1 md:ml-8">
                   <p
                     class="text-xs text-slate-500 uppercase tracking-wider mb-3"
                   >
@@ -593,43 +666,47 @@
             </Card>
 
             <!-- Headlines Section -->
-            <Card class="p-6 bg-slate-900/50 border-slate-800">
-              <div class="flex items-center gap-2 mb-4">
-                <FileText class="w-5 h-5 text-slate-400" />
-                <h3 class="text-lg font-semibold text-white">
-                  Top Headlines Impacting Sentiment
+            <Card class="p-4 md:p-6 bg-slate-900/50 border-slate-800">
+              <div class="flex items-center gap-2 mb-3 md:mb-4">
+                <FileText class="w-4 h-4 md:w-5 md:h-5 text-slate-400" />
+                <h3 class="text-base md:text-lg font-semibold text-white">
+                  Top Headlines
                 </h3>
               </div>
 
-              <div class="space-y-3">
-                {#each sortedHeadlines().slice(0, 8) as headline}
+              <div class="space-y-2 md:space-y-3">
+                {#each sortedHeadlines().slice(0, 6) as headline}
                   {@const colors = sentimentColors[headline.sentiment_label]}
                   <a
                     href={headline.url}
                     target="_blank"
-                    class="block p-4 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 border border-slate-800 hover:border-slate-700 transition-all"
+                    class="block p-3 md:p-4 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 border border-slate-800 hover:border-slate-700 transition-all"
                   >
-                    <div class="flex items-start gap-3">
+                    <div class="flex items-start gap-2 md:gap-3">
                       <!-- Sentiment Icon -->
-                      <div class="mt-1">
+                      <div class="mt-0.5 md:mt-1 flex-shrink-0">
                         {#if headline.sentiment_label === "positive"}
-                          <ArrowUpCircle class="w-5 h-5 text-emerald-500" />
+                          <ArrowUpCircle
+                            class="w-4 h-4 md:w-5 md:h-5 text-emerald-500"
+                          />
                         {:else if headline.sentiment_label === "negative"}
-                          <ArrowDownCircle class="w-5 h-5 text-rose-500" />
+                          <ArrowDownCircle
+                            class="w-4 h-4 md:w-5 md:h-5 text-rose-500"
+                          />
                         {:else}
-                          <Minus class="w-5 h-5 text-amber-500" />
+                          <Minus class="w-4 h-4 md:w-5 md:h-5 text-amber-500" />
                         {/if}
                       </div>
 
-                      <div class="flex-1">
+                      <div class="flex-1 min-w-0">
                         <div
-                          class="flex items-center gap-2 text-xs text-slate-500 mb-1"
+                          class="flex flex-wrap items-center gap-1 md:gap-2 text-xs text-slate-500 mb-1"
                         >
                           <span class="font-medium text-slate-400"
                             >{headline.source}</span
                           >
-                          <span>•</span>
-                          <span
+                          <span class="hidden sm:inline">•</span>
+                          <span class="hidden sm:inline"
                             >{headline.published_at
                               ? new Date(
                                   headline.published_at,
@@ -644,7 +721,11 @@
                             {getSentimentLabel(headline.sentiment_label)}
                           </span>
                         </div>
-                        <h4 class="text-white font-medium">{headline.title}</h4>
+                        <h4
+                          class="text-white text-sm md:text-base font-medium line-clamp-2"
+                        >
+                          {headline.title}
+                        </h4>
                       </div>
 
                       <ExternalLink class="w-4 h-4 text-slate-600" />
@@ -663,8 +744,10 @@
         </div>
 
         <!-- Right Sidebar - AI Insights -->
-        <div class="col-span-3">
-          <Card class="p-5 bg-slate-900/50 border-slate-800 sticky top-6">
+        <div class="lg:col-span-3 order-3">
+          <Card
+            class="p-4 md:p-5 bg-slate-900/50 border-slate-800 lg:sticky lg:top-6"
+          >
             <div class="flex items-center gap-2 mb-5">
               <div
                 class="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center"
