@@ -3,7 +3,7 @@
  */
 import type { APIResponse, RegionSentiment } from "./types";
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = ""; // Uses SvelteKit server-side proxy routes
 
 // Trend data types
 export interface TrendDataPoint {
