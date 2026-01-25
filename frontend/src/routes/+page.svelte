@@ -607,12 +607,15 @@
                         : 'ml-6'}"
                     >
                       {#each trendData as point, i}
-                        {@const colors =
-                          sentimentColors[point.label as SentimentLabel] ||
-                          sentimentColors.neutral}
+                        {@const barColor =
+                          point.label === "positive"
+                            ? "#10b981"
+                            : point.label === "negative"
+                              ? "#f43f5e"
+                              : "#f59e0b"}
                         <div
-                          class="flex-1 rounded-t transition-all duration-300 {colors.progress} hover:opacity-100 cursor-pointer group relative"
-                          style="height: {point.score}%; opacity: 0.7"
+                          class="flex-1 rounded-t transition-all duration-300 hover:opacity-100 cursor-pointer group relative"
+                          style="height: {point.score}%; opacity: 0.7; background-color: {barColor}"
                           title="{point.score.toFixed(1)}% - {new Date(
                             point.timestamp,
                           ).toLocaleTimeString()}"
