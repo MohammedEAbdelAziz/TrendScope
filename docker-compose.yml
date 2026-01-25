@@ -1,4 +1,4 @@
-# Docker Compose for Economic Sentiment Monitor
+# Docker Compose for TrendScope - Economic Sentiment Monitor
 # Full stack: Backend (FastAPI) + Frontend (SvelteKit) + Redis (for Celery)
 
 services:
@@ -13,7 +13,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - backend-data:/app/data
+      - sqlite-data:/app/data
+      - ./backend/sentiment_history.db:/app/sentiment_history.db
     depends_on:
       - redis
     restart: unless-stopped
@@ -34,7 +35,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - backend-data:/app/data
+      - sqlite-data:/app/data
+      - ./backend/sentiment_history.db:/app/sentiment_history.db
     depends_on:
       - redis
       - backend
@@ -51,7 +53,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
-      - backend-data:/app/data
+      - sqlite-data:/app/data
+      - ./backend/sentiment_history.db:/app/sentiment_history.db
     depends_on:
       - redis
       - celery-worker
@@ -86,5 +89,5 @@ services:
       retries: 3
 
 volumes:
-  backend-data:
+  sqlite-data:
   redis-data:

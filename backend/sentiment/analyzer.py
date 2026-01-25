@@ -97,10 +97,6 @@ class SentimentAnalyzer:
         
         return final_score, label
     
-    def score_to_percentage(self, score: float) -> float:
-        """Convert -1 to 1 score to 0-100 percentage"""
-        return round((score + 1) * 50, 1)
-    
     def calculate_polarity_score(self, bull_count: int, bear_count: int) -> float:
         """
         Calculate sentiment percentage based on Bull/Bear ratio.

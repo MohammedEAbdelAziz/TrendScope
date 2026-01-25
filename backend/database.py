@@ -109,13 +109,15 @@ def get_trend_data(region_id: str, hours: int = 24) -> list[dict]:
     cursor = conn.cursor()
     
     cutoff_time = datetime.now() - timedelta(hours=hours)
+    # Use strftime to match SQLite's CURRENT_TIMESTAMP format (YYYY-MM-DD HH:MM:SS)
+    cutoff_str = cutoff_time.strftime('%Y-%m-%d %H:%M:%S')
     
     cursor.execute("""
         SELECT sentiment_score, sentiment_label, headline_count, recorded_at
         FROM sentiment_history
         WHERE region_id = ? AND recorded_at >= ?
         ORDER BY recorded_at ASC
-    """, (region_id, cutoff_time.isoformat()))
+    """, (region_id, cutoff_str))
     
     rows = cursor.fetchall()
     conn.close()
@@ -190,12 +192,13 @@ def get_top_keywords(region_id: str, hours: int = 24, limit: int = 10) -> list[d
     cursor = conn.cursor()
     
     cutoff_time = datetime.now() - timedelta(hours=hours)
+    cutoff_str = cutoff_time.strftime('%Y-%m-%d %H:%M:%S')
     
     cursor.execute("""
         SELECT title, sentiment_label
         FROM headlines_history
         WHERE region_id = ? AND recorded_at >= ?
-    """, (region_id, cutoff_time.isoformat()))
+    """, (region_id, cutoff_str))
     
     rows = cursor.fetchall()
     conn.close()

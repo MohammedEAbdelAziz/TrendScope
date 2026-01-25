@@ -17,7 +17,6 @@
   import { Card } from "$lib/components/ui/card";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
-  import { Separator } from "$lib/components/ui/separator";
 
   // Lucide icons
   import {
@@ -730,7 +729,7 @@
               >
                 <Lightbulb class="w-4 h-4 text-amber-400" />
               </div>
-              <h3 class="text-lg font-semibold text-white">{t.aiInsights}</h3>
+              <h3 class="text-lg font-semibold text-white">{t.insights}</h3>
             </div>
 
             {#if loadingInsights}
@@ -780,15 +779,6 @@
                 </div>
               </div>
             {/if}
-
-            <Separator class="my-5 bg-slate-800" />
-
-            <Button
-              variant="outline"
-              class="w-full border-slate-700 text-slate-300 hover:bg-slate-800"
-            >
-              {t.viewFullReport}
-            </Button>
           </Card>
         </div>
       </div>

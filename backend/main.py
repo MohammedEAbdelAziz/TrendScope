@@ -26,7 +26,7 @@ from database import (
     get_trend_data, get_sentiment_change, save_sentiment_snapshot, 
     save_headlines_batch, init_db
 )
-from ai_insights import generate_insights
+from insights import generate_insights
 
 # Load environment variables
 from dotenv import load_dotenv

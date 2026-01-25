@@ -62,10 +62,9 @@ export interface Translations {
   today: string;
 
   // Insights
-  aiInsights: string;
+  insights: string;
   analysisPending: string;
   analysisPendingText: string;
-  viewFullReport: string;
 
   // Trend chart
   sentimentTrend24h: string;
@@ -114,7 +113,7 @@ export const translations: Record<Locale, Translations> = {
 
     sentimentAnalysis: "Sentiment Analysis",
     realTimeAnalysis:
-      "Real-time AI analysis of economic news, market reports, and trade policies.",
+      "Automated analysis of economic news, market reports, and trade policies.",
     noiseFilterActive: "Noise filter active",
     noiseFiltered: "noise headlines filtered out",
     sentimentBalance: "Sentiment Balance",
@@ -127,11 +126,10 @@ export const translations: Record<Locale, Translations> = {
     topHeadlines: "Top Headlines Impacting Sentiment",
     today: "Today",
 
-    aiInsights: "AI Insights",
+    insights: "Insights",
     analysisPending: "ANALYSIS PENDING",
     analysisPendingText:
-      "Collecting data for AI analysis. Insights will appear after more data points are gathered.",
-    viewFullReport: "View Full Report",
+      "Collecting data for analysis. Insights will appear after more data points are gathered.",
 
     sentimentTrend24h: "24h Sentiment Trend",
     dataPoints: "data points",
@@ -178,7 +176,7 @@ export const translations: Record<Locale, Translations> = {
 
     sentimentAnalysis: "تحليل التوجهات",
     realTimeAnalysis:
-      "تحليل آني بالذكاء الاصطناعي للأخبار الاقتصادية وتقارير الأسواق والسياسات التجارية.",
+      "تحليل آلي للأخبار الاقتصادية وتقارير الأسواق والسياسات التجارية.",
     noiseFilterActive: "فلتر التصفية فعّال",
     noiseFiltered: "خبر تمت تصفيته",
     sentimentBalance: "ميزان التوجهات",
@@ -191,11 +189,10 @@ export const translations: Record<Locale, Translations> = {
     topHeadlines: "أبرز العناوين المؤثرة على التوجهات",
     today: "اليوم",
 
-    aiInsights: "تحليلات الذكاء الاصطناعي",
+    insights: "التحليلات",
     analysisPending: "التحليل قيد المعالجة",
     analysisPendingText:
       "جاري جمع البيانات للتحليل. ستظهر التحليلات بعد توفر بيانات كافية.",
-    viewFullReport: "عرض التقرير الكامل",
 
     sentimentTrend24h: "اتجاه التوجهات خلال 24 ساعة",
     dataPoints: "نقطة بيانات",

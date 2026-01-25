@@ -1,0 +1,8 @@
+Rebrand, cleanup, and bug fixes
+- Rename to TrendScope with Arabic/English i18n
+- Add IBM Plex Sans Arabic font for RTL support
+- Fix 24h trend chart (timestamp format mismatch)
+- Persist SQLite in Docker via bind mount
+- Remove unused scrapers and dead code
+- Drop "AI" branding from insights panel
+- Add Umami analytics
