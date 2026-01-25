@@ -80,8 +80,8 @@ export interface Translations {
 
 export const translations: Record<Locale, Translations> = {
   en: {
-    appTitle: "Enterprise Sentiment Monitor",
-    appSubtitle: "Global Economic Intelligence",
+    appTitle: "TrendScope",
+    appSubtitle: "Economic Sentiment at a Glance",
     systemOperational: "System Operational",
     lastUpdated: "Last Updated",
     refresh: "Refresh",
@@ -144,8 +144,8 @@ export const translations: Record<Locale, Translations> = {
 
   ar: {
     // Professional Arabic translations - formal business terminology
-    appTitle: "منصة رصد المؤشرات الاقتصادية",
-    appSubtitle: "نظام الاستخبارات الاقتصادية العالمية",
+    appTitle: "مرصد التوجهات",
+    appSubtitle: "نظرة شاملة على التوجهات الاقتصادية",
     systemOperational: "النظام فعّال",
     lastUpdated: "آخر تحديث",
     refresh: "تحديث البيانات",
