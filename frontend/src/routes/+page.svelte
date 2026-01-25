@@ -17,6 +17,9 @@
   import { Card } from "$lib/components/ui/card";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
+  import * as Chart from "$lib/components/ui/chart";
+  import { BarChart } from "layerchart";
+  import { scaleBand } from "d3-scale";
 
   // Lucide icons
   import {
@@ -586,57 +589,58 @@
 
                 {#if loadingTrend}
                   <div
-                    class="h-20 bg-slate-800/30 rounded-lg animate-pulse"
+                    class="h-32 bg-slate-800/30 rounded-lg animate-pulse"
                   ></div>
                 {:else if trendData.length > 0}
-                  <div
-                    class="h-24 bg-slate-800/30 rounded-lg flex items-end px-2 pb-2 gap-0.5 relative"
-                  >
-                    <div
-                      class="absolute {rtl
-                        ? 'right-0'
-                        : 'left-0'} top-0 bottom-0 flex flex-col justify-between text-xs text-slate-600 py-1"
-                    >
-                      <span>100</span>
-                      <span>50</span>
-                      <span>0</span>
-                    </div>
-                    <div
-                      class="flex-1 flex items-end gap-0.5 {rtl
-                        ? 'mr-6'
-                        : 'ml-6'}"
-                    >
-                      {#each trendData as point, i}
-                        {@const barColor =
-                          point.label === "positive"
-                            ? "#10b981"
-                            : point.label === "negative"
-                              ? "#f43f5e"
-                              : "#f59e0b"}
-                        <div
-                          class="flex-1 rounded-t transition-all duration-300 hover:opacity-100 cursor-pointer group relative"
-                          style="height: {point.score}%; opacity: 0.7; background-color: {barColor}"
-                          title="{point.score.toFixed(1)}% - {new Date(
-                            point.timestamp,
-                          ).toLocaleTimeString()}"
-                        >
-                          <div
-                            class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10"
-                          >
-                            <div
-                              class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs whitespace-nowrap"
-                            >
-                              <div class="text-white font-medium">
-                                {point.score.toFixed(1)}%
-                              </div>
-                              <div class="text-slate-400">
-                                {new Date(point.timestamp).toLocaleTimeString()}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      {/each}
-                    </div>
+                  {@const chartData = trendData.map((point) => ({
+                    time: new Date(point.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                    score: point.score,
+                    label: point.label,
+                  }))}
+                  {@const chartConfig = {
+                    score: {
+                      label: "Sentiment",
+                      color: "#3b82f6",
+                    },
+                  }}
+                  <div class="h-32 w-full">
+                    <Chart.Container config={chartConfig} class="h-full w-full">
+                      <BarChart
+                        data={chartData}
+                        xScale={scaleBand().padding(0.3)}
+                        x="time"
+                        y="score"
+                        axis="x"
+                        bar={{
+                          radius: 4,
+                          fill: (d) =>
+                            d.label === "positive"
+                              ? "#10b981"
+                              : d.label === "negative"
+                                ? "#f43f5e"
+                                : "#f59e0b",
+                        }}
+                        yDomain={[0, 100]}
+                        props={{
+                          xAxis: {
+                            tickLabelProps: {
+                              fill: "#64748b",
+                              fontSize: 10,
+                            },
+                          },
+                        }}
+                      >
+                        {#snippet tooltip()}
+                          <Chart.Tooltip
+                            labelFormatter={(d) => d.time}
+                            formatter={(value) => `${value.toFixed(1)}%`}
+                          />
+                        {/snippet}
+                      </BarChart>
+                    </Chart.Container>
                   </div>
                 {:else}
                   <div
