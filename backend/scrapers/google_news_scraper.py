@@ -10,19 +10,15 @@ import logging
 import re
 import html
 
-from .base import BaseScraper
-
 logger = logging.getLogger(__name__)
 
 
-class GoogleNewsRSSScraper(BaseScraper):
+class GoogleNewsRSSScraper:
     """Scraper using Google News RSS feeds for all regions"""
     
     BASE_URL = "https://news.google.com/rss/search"
     
     # Region-specific search configurations
-    # All queries include "when:1d" to limit to last 24 hours
-    # Queries are focused strictly on economic/financial news
     REGION_CONFIG = {
         "global": {
             "query": "(economy OR GDP OR inflation OR interest rates OR trade deficit OR central bank) AND (global OR world OR international) when:1d",
@@ -69,7 +65,8 @@ class GoogleNewsRSSScraper(BaseScraper):
     }
     
     def __init__(self, region_id: str, region_name: str):
-        super().__init__(region_id, region_name)
+        self.region_id = region_id
+        self.region_name = region_name
         self.config = self.REGION_CONFIG.get(region_id, self.REGION_CONFIG["global"])
     
     def _clean_title(self, title: str) -> str:

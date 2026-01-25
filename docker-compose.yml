@@ -8,13 +8,12 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: sentiment-backend
-    # No ports exposed - accessed internally by frontend
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_PATH=/app/data/sentiment_history.db
     volumes:
       - sqlite-data:/app/data
-      - ./backend/sentiment_history.db:/app/sentiment_history.db
     depends_on:
       - redis
     restart: unless-stopped
@@ -34,9 +33,9 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_PATH=/app/data/sentiment_history.db
     volumes:
       - sqlite-data:/app/data
-      - ./backend/sentiment_history.db:/app/sentiment_history.db
     depends_on:
       - redis
       - backend
@@ -52,9 +51,9 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_PATH=/app/data/sentiment_history.db
     volumes:
       - sqlite-data:/app/data
-      - ./backend/sentiment_history.db:/app/sentiment_history.db
     depends_on:
       - redis
       - celery-worker
@@ -78,7 +77,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: sentiment-redis
-    # No ports exposed - Redis only needs internal network access
     volumes:
       - redis-data:/data
     restart: unless-stopped

@@ -7,14 +7,20 @@ from datetime import datetime, timedelta
 from typing import Optional
 import os
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), "sentiment_history.db")
+# Use env var for Docker, fallback to local path for development
+DATABASE_PATH = os.getenv("DATABASE_PATH", os.path.join(os.path.dirname(__file__), "sentiment_history.db"))
 
 
 def get_db_connection():
     """Get database connection"""
+    # Ensure the directory exists
+    db_dir = os.path.dirname(DATABASE_PATH)
+    if db_dir:
+        Path(db_dir).mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     return conn
