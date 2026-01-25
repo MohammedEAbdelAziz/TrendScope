@@ -7,7 +7,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: sentiment-backend
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -30,7 +29,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: sentiment-celery-worker
     command: celery -A celery_tasks worker --loglevel=info
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -50,7 +48,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: sentiment-celery-beat
     command: celery -A celery_tasks beat --loglevel=info
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -61,16 +58,13 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      backend:
-        condition: service_healthy
     restart: unless-stopped
 
-  # Frontend (SvelteKit)
+  # Frontend (SvelteKit) - only service exposed to internet
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: sentiment-frontend
     ports:
       - "3000:3000"
     environment:
@@ -89,7 +83,6 @@ services:
   # Redis (message broker for Celery)
   redis:
     image: redis:7-alpine
-    container_name: sentiment-redis
     volumes:
       - redis-data:/data
     restart: unless-stopped
