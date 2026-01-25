@@ -76,9 +76,12 @@ def collect_region_data(region_id: str, region_name: str) -> dict:
                 "sentiment_label": label.value  # Convert enum to string
             })
         
-        # Calculate aggregate sentiment
-        avg_score, overall_label = analyzer.aggregate_sentiment(scores)
-        percentage_score = analyzer.score_to_percentage(avg_score)
+        # Calculate aggregate sentiment using polarity counting
+        avg_score, overall_label, polarity_counts = analyzer.aggregate_sentiment(scores)
+        percentage_score = analyzer.calculate_polarity_score(
+            polarity_counts.bull_count, 
+            polarity_counts.bear_count
+        )
         
         # Save to database
         save_sentiment_snapshot(
@@ -162,8 +165,11 @@ def run_collection_now():
                     "sentiment_label": label.value
                 })
             
-            avg_score, overall_label = analyzer.aggregate_sentiment(scores)
-            percentage_score = analyzer.score_to_percentage(avg_score)
+            avg_score, overall_label, polarity_counts = analyzer.aggregate_sentiment(scores)
+            percentage_score = analyzer.calculate_polarity_score(
+                polarity_counts.bull_count, 
+                polarity_counts.bear_count
+            )
             
             save_sentiment_snapshot(region_id, percentage_score, overall_label.value, len(headlines))
             save_headlines_batch(region_id, headlines)
