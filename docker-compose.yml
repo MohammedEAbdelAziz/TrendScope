@@ -15,13 +15,15 @@ services:
     volumes:
       - sqlite-data:/app/data
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
 
   # Celery Worker (for scheduled data collection)
   celery-worker:
@@ -37,9 +39,27 @@ services:
     volumes:
       - sqlite-data:/app/data
     depends_on:
-      - redis
-      - backend
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "celery",
+          "-A",
+          "celery_tasks",
+          "inspect",
+          "ping",
+          "-d",
+          "celery@$$HOSTNAME",
+        ]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 30s
 
   # Celery Beat (scheduler for hourly collection)
   celery-beat:
@@ -55,8 +75,10 @@ services:
     volumes:
       - sqlite-data:/app/data
     depends_on:
-      - redis
-      - celery-worker
+      redis:
+        condition: service_healthy
+      celery-worker:
+        condition: service_healthy
     restart: unless-stopped
 
   # Frontend (SvelteKit)
@@ -70,8 +92,15 @@ services:
     environment:
       - PUBLIC_API_URL=http://backend:8000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # Redis (message broker for Celery)
   redis:
@@ -85,6 +114,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 5s
 
 volumes:
   sqlite-data:

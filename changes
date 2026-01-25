@@ -1,4 +1,4 @@
 Fix Docker startup errors and cleanup
-- Remove scrapers.base import (made GoogleNewsRSSScraper standalone)
-- Use DATABASE_PATH env var with auto-directory creation
-- Switch from bind mount to named volume for SQLite
+- Fixed a bug with the scraper
+- Added health checks
+- Added README.md

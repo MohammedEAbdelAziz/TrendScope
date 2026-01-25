@@ -68,6 +68,10 @@ class GoogleNewsRSSScraper:
         self.region_id = region_id
         self.region_name = region_name
         self.config = self.REGION_CONFIG.get(region_id, self.REGION_CONFIG["global"])
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/rss+xml, application/xml, text/xml, */*"
+        }
     
     def _clean_title(self, title: str) -> str:
         """Clean up the title - remove source suffix and HTML entities"""

@@ -203,6 +203,33 @@ async def root():
     }
 
 
+@app.get("/health")
+async def health_check():
+    """Basic health check for Docker"""
+    return {"status": "healthy"}
+
+
+@app.get("/api/health")
+async def api_health():
+    """Detailed health check with database and scraper status"""
+    try:
+        # Check database connection
+        from database import get_db_connection
+        conn = get_db_connection()
+        conn.execute("SELECT 1")
+        conn.close()
+        db_status = "healthy"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "status": "healthy" if db_status == "healthy" else "degraded",
+        "database": db_status,
+        "regions": len(SCRAPERS),
+        "cache_size": len(cache)
+    }
+
+
 @app.get("/api/regions", response_model=APIResponse)
 async def get_all_regions():
     """Get sentiment data for all regions"""
