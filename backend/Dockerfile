@@ -1,12 +1,8 @@
-FROM python:3.11-slim
+FROM python:3.12
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+# (Full image includes all system dependencies like libgomp1 and ca-certificates)
 
 # Copy requirements first for caching
 COPY requirements.txt .
