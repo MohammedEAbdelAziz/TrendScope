@@ -75,6 +75,12 @@ export interface Translations {
   // Errors
   connectionError: string;
   tryAgain: string;
+  // Footer
+  footer: {
+    createdBy: string;
+    repo: string;
+    disclaimer: string;
+  };
 }
 
 export const translations: Record<Locale, Translations> = {
@@ -138,6 +144,13 @@ export const translations: Record<Locale, Translations> = {
 
     connectionError: "Connection Error",
     tryAgain: "Try Again",
+
+    footer: {
+      createdBy: "Created by Mohammed Essam",
+      repo: "TrendScope GitHub Repo",
+      disclaimer:
+        "Data collection via Umami. I am not liable for data accuracy. This is not trade advice. Student refresher project.",
+    },
   },
 
   ar: {
@@ -202,6 +215,13 @@ export const translations: Record<Locale, Translations> = {
 
     connectionError: "خطأ في الاتصال",
     tryAgain: "إعادة المحاولة",
+
+    footer: {
+      createdBy: "تم التطوير بواسطة محمد عصام",
+      repo: "مستودع المشروع على GitHub",
+      disclaimer:
+        "يتم جمع البيانات لأغراض التحليل فقط. المشروع للأغراض التعليمية ولا يعتبر نصيحة مالية أو تجارية.",
+    },
   },
 };
 
