@@ -17,9 +17,6 @@
   import { Card } from "$lib/components/ui/card";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
-  import * as Chart from "$lib/components/ui/chart";
-  import { BarChart } from "layerchart";
-  import { scaleBand } from "d3-scale";
 
   // Lucide icons
   import {
@@ -589,58 +586,55 @@
 
                 {#if loadingTrend}
                   <div
-                    class="h-32 bg-slate-800/30 rounded-lg animate-pulse"
+                    class="h-28 bg-slate-800/30 rounded-lg animate-pulse"
                   ></div>
                 {:else if trendData.length > 0}
-                  {@const chartData = trendData.map((point) => ({
-                    time: new Date(point.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }),
-                    score: point.score,
-                    label: point.label,
-                  }))}
-                  {@const chartConfig = {
-                    score: {
-                      label: "Sentiment",
-                      color: "#3b82f6",
-                    },
-                  }}
-                  <div class="h-32 w-full">
-                    <Chart.Container config={chartConfig} class="h-full w-full">
-                      <BarChart
-                        data={chartData}
-                        xScale={scaleBand().padding(0.3)}
-                        x="time"
-                        y="score"
-                        axis="x"
-                        bar={{
-                          radius: 4,
-                          fill: (d) =>
-                            d.label === "positive"
-                              ? "#10b981"
-                              : d.label === "negative"
-                                ? "#f43f5e"
-                                : "#f59e0b",
-                        }}
-                        yDomain={[0, 100]}
-                        props={{
-                          xAxis: {
-                            tickLabelProps: {
-                              fill: "#64748b",
-                              fontSize: 10,
-                            },
-                          },
-                        }}
+                  <div class="h-28 bg-slate-800/30 rounded-lg p-3">
+                    <!-- Y-axis labels -->
+                    <div class="flex h-full">
+                      <div
+                        class="flex flex-col justify-between text-[10px] text-slate-500 {rtl
+                          ? 'pl-2'
+                          : 'pr-2'}"
                       >
-                        {#snippet tooltip()}
-                          <Chart.Tooltip
-                            labelFormatter={(d) => d.time}
-                            formatter={(value) => `${value.toFixed(1)}%`}
-                          />
-                        {/snippet}
-                      </BarChart>
-                    </Chart.Container>
+                        <span>100</span>
+                        <span>50</span>
+                        <span>0</span>
+                      </div>
+                      <!-- Bars -->
+                      <div class="flex-1 flex items-end gap-1">
+                        {#each trendData as point}
+                          <div
+                            class="flex-1 flex flex-col items-center gap-1"
+                            title="{point.score.toFixed(1)}%"
+                          >
+                            <div
+                              class="w-full rounded-t-sm transition-all duration-200 hover:opacity-80"
+                              style="height: {(point.score / 100) *
+                                100}%; background-color: {point.label ===
+                              'positive'
+                                ? '#10b981'
+                                : point.label === 'negative'
+                                  ? '#f43f5e'
+                                  : '#f59e0b'}; min-height: 2px;"
+                            ></div>
+                          </div>
+                        {/each}
+                      </div>
+                    </div>
+                    <!-- X-axis labels -->
+                    <div class="flex {rtl ? 'pr-6' : 'pl-6'} mt-1">
+                      {#each trendData as point}
+                        <div class="flex-1 text-center">
+                          <span class="text-[9px] text-slate-500">
+                            {new Date(point.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      {/each}
+                    </div>
                   </div>
                 {:else}
                   <div

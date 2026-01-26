@@ -133,7 +133,8 @@ def get_trend_data(region_id: str, hours: int = 24) -> list[dict]:
             "score": row["sentiment_score"],
             "label": row["sentiment_label"],
             "headline_count": row["headline_count"],
-            "timestamp": row["recorded_at"]
+            # Convert to ISO format with Z suffix for UTC (SQLite stores in UTC)
+            "timestamp": row["recorded_at"].replace(" ", "T") + "Z" if row["recorded_at"] else None
         }
         for row in rows
     ]

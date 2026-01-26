@@ -238,7 +238,7 @@ async def get_all_regions():
         
         for region_id in REGIONS.keys():
             try:
-                region_data = process_region(region_id)
+                region_data = process_region(region_id, save_to_db=False)
                 regions_data.append(region_data)
             except Exception as e:
                 logger.error(f"Error processing region {region_id}: {e}")
@@ -270,7 +270,7 @@ async def get_region(region_id: str):
         )
     
     try:
-        region_data = process_region(region_id)
+        region_data = process_region(region_id, save_to_db=False)
         
         return APIResponse(
             success=True,
