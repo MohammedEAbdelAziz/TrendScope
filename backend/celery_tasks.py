@@ -35,6 +35,7 @@ app.conf.update(
     timezone="UTC",
     enable_utc=True,
     # Beat schedule for hourly data collection
+    beat_schedule={
         "collect-sentiment-hourly": {
             "task": "celery_tasks.collect_all_regions",
             "schedule": crontab(minute=0),  # Every hour at :00
