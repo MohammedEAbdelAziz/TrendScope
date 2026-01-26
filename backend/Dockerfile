@@ -12,7 +12,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
+# Copy application code
 COPY . .
+
+# Copy the locally built quantized model
+COPY model_quantized/ ./model_quantized/
 
 # Expose port
 EXPOSE 8000

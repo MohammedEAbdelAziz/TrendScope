@@ -1,4 +1,7 @@
-feat: optimize memory, add auto-cleanup and refine UI
+feat(ml): upgrade to quantized ONNX FinancialBERT
 
-- **Infra**: Optimized Celery worker memory usage by enforcing single concurrency and process restarts after every task (`--max-tasks-per-child=1`), resolving potential memory leaks.
-- **Backend**: Implemented daily database auto-cleanup task (retention policy of 7 days) to prevent disk space exhaustion.
+- **Core**: Replaced legacy TextBlob sentiment engine with a high-performance FinancialBERT model.
+- **Optimization**: Applied dynamic Int8 quantization via ONNX Runtime to minimize memory footprint (<100MB) and CPU usage suitable for low-resource VPS.
+- **Workflow**: Added build_model.py for local quantization and updated Dockerfile to utilize pre-built model artifacts.
+- **Infra**: Configured strict model loading to ensure zero silent failures in production.
+- **Deps**: Added `optimum` and `transformers` to backend dependencies.

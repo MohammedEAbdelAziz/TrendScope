@@ -1,26 +1,18 @@
 """
-Sentiment Analysis Engine with Polarity Counting and Noise Filter
+Sentiment Analysis Engine using Distilled FinancialBERT (ONNX Int8)
 """
-from textblob import TextBlob
+from pathlib import Path
+from typing import Dict, Union, List, Optional
+import numpy as np
+import logging
+import os
+from optimum.onnxruntime import ORTModelForSequenceClassification
+from transformers import AutoTokenizer
 from models import SentimentLabel
-import re
 from dataclasses import dataclass
+import re
 
-
-# Economic keywords that boost positive/negative sentiment
-POSITIVE_KEYWORDS = [
-    "growth", "surge", "rally", "boom", "gains", "profit", "recovery",
-    "expansion", "bullish", "upbeat", "optimism", "record high",
-    "investment", "innovation", "breakthrough", "milestone", "success",
-    "strong", "robust", "thriving", "flourishing", "soaring"
-]
-
-NEGATIVE_KEYWORDS = [
-    "recession", "crash", "crisis", "decline", "losses", "deficit",
-    "inflation", "unemployment", "bankruptcy", "collapse", "downturn",
-    "bearish", "slump", "plunge", "warning", "risk", "fear", "concern",
-    "weak", "struggling", "falling", "dropping", "shrinking", "layoffs"
-]
+logger = logging.getLogger(__name__)
 
 # Noise filter - fluff keywords to exclude
 NOISE_KEYWORDS = [
@@ -29,10 +21,8 @@ NOISE_KEYWORDS = [
     'live updates', 'commentary', 'column', 'q&a', 'interview'
 ]
 
-KEYWORD_BOOST = 0.15  # How much to boost sentiment for each keyword match
-BULL_THRESHOLD = 0.2  # Score above this = Bullish
-BEAR_THRESHOLD = -0.2  # Score below this = Bearish
-
+BULL_THRESHOLD = 0.6  # High confidence for bull
+BEAR_THRESHOLD = 0.6  # High confidence for bear
 
 @dataclass
 class PolarityCounts:
@@ -40,114 +30,131 @@ class PolarityCounts:
     bull_count: int = 0
     bear_count: int = 0
     neutral_count: int = 0
-    filtered_count: int = 0  # Headlines removed by noise filter
-
+    filtered_count: int = 0
 
 class SentimentAnalyzer:
-    """Analyzes sentiment of economic news headlines with polarity counting"""
+    """Analyzes sentiment of financial news using ONNX quantizied model"""
+    
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(SentimentAnalyzer, cls).__new__(cls)
+            cls._instance.initialized = False
+        return cls._instance
     
     def __init__(self):
-        self.positive_pattern = re.compile(
-            r'\b(' + '|'.join(POSITIVE_KEYWORDS) + r')\b', 
-            re.IGNORECASE
-        )
-        self.negative_pattern = re.compile(
-            r'\b(' + '|'.join(NEGATIVE_KEYWORDS) + r')\b', 
-            re.IGNORECASE
-        )
+        if self.initialized:
+            return
+            
         self.noise_pattern = re.compile(
             r'\b(' + '|'.join(NOISE_KEYWORDS) + r')\b', 
             re.IGNORECASE
         )
-    
+        
+        # Model paths
+        self.model_dir = Path(os.path.join(os.path.dirname(os.path.dirname(__file__)), "model_quantized"))
+        self.tokenizer_id = "mrm8488/distilroberta-finetuned-financial-news-sentiment-analysis"
+        
+        try:
+            self._load_model()
+        except Exception as e:
+            logger.critical(f"FATAL: Failed to load ONNX model: {e}")
+            raise RuntimeError("Could not load financial sentiment model. Check model_quantized directory.") from e
+
+        self.initialized = True
+
+    def _load_model(self):
+        """Load the quantized ONNX model"""
+        if not (self.model_dir / "model_quantized.onnx").exists():
+            logger.info("Quantized model not found. Please run build_model.py first.")
+            self.model = None
+            return
+
+        logger.info(f"Loading ONNX model from {self.model_dir}...")
+        self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_id)
+        self.model = ORTModelForSequenceClassification.from_pretrained(
+            self.model_dir,
+            file_name="model_quantized.onnx"
+        )
+        self.id2label = {0: "negative", 1: "neutral", 2: "positive"}
+        logger.info("ONNX Model loaded successfully")
+
     def is_noise(self, text: str) -> bool:
-        """Check if headline is noise/fluff that should be filtered out"""
-        if not text:
-            return True
+        if not text: return True
         return bool(self.noise_pattern.search(text))
-    
+
     def analyze(self, text: str) -> tuple[float, SentimentLabel]:
         """
-        Analyze sentiment of text.
-        Returns: (score from -1 to 1, sentiment label)
+        Analyze sentiment. Returns (score -1 to 1, label).
         """
         if not text or not text.strip():
             return 0.0, SentimentLabel.NEUTRAL
-        
-        # Get base sentiment from TextBlob
-        blob = TextBlob(text)
-        base_score = blob.sentiment.polarity  # -1 to 1
-        
-        # Apply keyword boosting
-        positive_matches = len(self.positive_pattern.findall(text))
-        negative_matches = len(self.negative_pattern.findall(text))
-        
-        keyword_boost = (positive_matches - negative_matches) * KEYWORD_BOOST
-        
-        # Combine scores with clamping
-        final_score = max(-1.0, min(1.0, base_score + keyword_boost))
-        
-        # Determine label using thresholds for Bull/Bear classification
-        if final_score > BULL_THRESHOLD:
-            label = SentimentLabel.POSITIVE  # Bullish
-        elif final_score < BEAR_THRESHOLD:
-            label = SentimentLabel.NEGATIVE  # Bearish
-        else:
-            label = SentimentLabel.NEUTRAL
-        
-        return final_score, label
-    
+
+        if self.model is None:
+             # Fallback if model not loaded
+            return 0.0, SentimentLabel.NEUTRAL
+
+        try:
+            # Tokenize
+            inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=64)
+            
+            # Inference
+            outputs = self.model(**inputs)
+            logits = outputs.logits.detach().numpy()
+            
+            # Softmax
+            exp_logits = np.exp(logits - np.max(logits))
+            probabilities = exp_logits / exp_logits.sum(axis=1, keepdims=True)
+            
+            # Result
+            pred_id = np.argmax(probabilities[0])
+            confidence = float(probabilities[0][pred_id])
+            label_str = self.id2label[pred_id]
+            
+            # Map to system types
+            if label_str == "positive":
+                return confidence, SentimentLabel.POSITIVE
+            elif label_str == "negative":
+                return -confidence, SentimentLabel.NEGATIVE
+            else:
+                return 0.0, SentimentLabel.NEUTRAL
+                
+        except Exception as e:
+            logger.error(f"Inference error: {e}")
+            return 0.0, SentimentLabel.NEUTRAL
+
     def calculate_polarity_score(self, bull_count: int, bear_count: int) -> float:
-        """
-        Calculate sentiment percentage based on Bull/Bear ratio.
-        Score = (Bullish_Count / (Bullish_Count + Bearish_Count)) * 100
-        """
-        total_active = bull_count + bear_count
-        if total_active == 0:
-            return 50.0  # Neutral when no active signals
-        return round((bull_count / total_active) * 100, 1)
-    
+        total = bull_count + bear_count
+        if total == 0: return 50.0
+        return round((bull_count / total) * 100, 1)
+
     def aggregate_sentiment(self, scores: list[float]) -> tuple[float, SentimentLabel, PolarityCounts]:
-        """
-        Aggregate multiple sentiment scores using polarity counting.
-        Returns: (average score -1 to 1, overall label, polarity counts)
-        """
         counts = PolarityCounts()
-        
         if not scores:
             return 0.0, SentimentLabel.NEUTRAL, counts
-        
+            
         for score in scores:
-            if score > BULL_THRESHOLD:
+            if score > 0.1:  # Positive confidence
                 counts.bull_count += 1
-            elif score < BEAR_THRESHOLD:
+            elif score < -0.1: # Negative confidence
                 counts.bear_count += 1
             else:
                 counts.neutral_count += 1
-        
-        # Calculate polarity-based score
+                
         polarity_score = self.calculate_polarity_score(counts.bull_count, counts.bear_count)
         
-        # Determine overall label based on polarity score
         if polarity_score > 55:
             label = SentimentLabel.POSITIVE
         elif polarity_score < 45:
             label = SentimentLabel.NEGATIVE
         else:
             label = SentimentLabel.NEUTRAL
+            
+        # Normalize 0-100 to -1 to 1
+        normalized = (polarity_score - 50) / 50
         
-        # Convert polarity percentage to -1 to 1 scale for compatibility
-        normalized_score = (polarity_score - 50) / 50  # -1 to 1
-        
-        return normalized_score, label, counts
-    
-    def aggregate_sentiment_legacy(self, scores: list[float]) -> tuple[float, SentimentLabel]:
-        """
-        Legacy aggregation method (for backward compatibility).
-        """
-        score, label, _ = self.aggregate_sentiment(scores)
-        return score, label
+        return normalized, label, counts
 
-
-# Singleton instance
+# Singleton
 analyzer = SentimentAnalyzer()

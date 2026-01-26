@@ -11,3 +11,6 @@ aiohttp==3.9.3
 cachetools==5.3.2
 celery==5.3.6
 redis==5.0.1
+optimum[onnxruntime]==1.16.1
+transformers==4.37.2
+numpy==1.26.4
