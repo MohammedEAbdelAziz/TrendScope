@@ -35,10 +35,13 @@ app.conf.update(
     timezone="UTC",
     enable_utc=True,
     # Beat schedule for hourly data collection
-    beat_schedule={
         "collect-sentiment-hourly": {
             "task": "celery_tasks.collect_all_regions",
             "schedule": crontab(minute=0),  # Every hour at :00
+        },
+        "cleanup-db-daily": {
+            "task": "celery_tasks.cleanup_db",
+            "schedule": crontab(hour=0, minute=0),  # Every day at midnight
         },
     },
 )
@@ -180,6 +183,14 @@ def run_collection_now():
             logger.error(f"Error collecting {region_id}: {e}")
     
     logger.info("Data collection complete!")
+
+
+@app.task(name="celery_tasks.cleanup_db")
+def cleanup_db() -> dict:
+    """Daily database cleanup task"""
+    from database import cleanup_old_data
+    logger.info("Starting daily database cleanup")
+    return cleanup_old_data(days=7)  # Keep 7 days of history
 
 
 if __name__ == "__main__":

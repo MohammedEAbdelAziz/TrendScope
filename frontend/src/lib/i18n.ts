@@ -149,7 +149,7 @@ export const translations: Record<Locale, Translations> = {
       createdBy: "Created by Mohammed Essam",
       repo: "TrendScope GitHub Repo",
       disclaimer:
-        "Data collection via Umami. I am not liable for data accuracy. This is not trade advice. Student refresher project.",
+        "Traffic Data collection via Umami. I am not liable for data accuracy. This is not trade advice.",
     },
   },
 
@@ -218,9 +218,9 @@ export const translations: Record<Locale, Translations> = {
 
     footer: {
       createdBy: "تم التطوير بواسطة محمد عصام",
-      repo: "مستودع المشروع على GitHub",
+      repo: "المشروع على GitHub",
       disclaimer:
-        "يتم جمع البيانات لأغراض التحليل فقط. المشروع للأغراض التعليمية ولا يعتبر نصيحة مالية أو تجارية.",
+        "يتم جمع البيانات لأغراض التحليل فقط. ولا يعتبر نصيحة مالية أو تجارية.",
     },
   },
 };

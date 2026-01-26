@@ -227,5 +227,34 @@ def get_top_keywords(region_id: str, hours: int = 24, limit: int = 10) -> list[d
     return [{"word": k, **v} for k, v in sorted_keywords[:limit]]
 
 
+
+def cleanup_old_data(days: int = 7):
+    """Delete data older than N days to keep database size manageable"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cutoff_date = datetime.now() - timedelta(days=days)
+    cutoff_str = cutoff_date.strftime('%Y-%m-%d %H:%M:%S')
+    
+    try:
+        # Cleanup headlines history
+        cursor.execute("DELETE FROM headlines_history WHERE recorded_at < ?", (cutoff_str,))
+        headlines_deleted = cursor.rowcount
+        
+        # Cleanup sentiment history 
+        cursor.execute("DELETE FROM sentiment_history WHERE recorded_at < ?", (cutoff_str,))
+        sentiment_deleted = cursor.rowcount
+        
+        conn.commit()
+        logger.info(f"Database cleanup: Deleted {headlines_deleted} old headlines and {sentiment_deleted} sentiment records")
+        return {"headlines_deleted": headlines_deleted, "sentiment_deleted": sentiment_deleted}
+        
+    except Exception as e:
+        logger.error(f"Error cleaning up database: {e}")
+        return {"error": str(e)}
+    finally:
+        conn.close()
+
+
 # Initialize database on module load
 init_db()

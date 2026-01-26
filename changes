@@ -1,7 +1,4 @@
-feat: enhance UI with footer, improved charts and fix historical data pollution
+feat: optimize memory, add auto-cleanup and refine UI
 
-- **Frontend**: Added responsive footer with credits, repo link, and disclaimers (EN/AR).
-- **Frontend**: Refined trend chart visualization with improved bar styling, spacing, and a rich custom tooltip.
-- **Frontend**: Optimized chart X-axis labels to handle high-density data and prevent crowding.
-- **Backend**: Fixed API endpoints (`/regions`, `/regions/{id}`) to stop saving data to the database on read operations, ensuring only the Celery worker writes historical data.
-- **Backend**: Updated trend API to return proper ISO timestamps for accurate local time conversion.
+- **Infra**: Optimized Celery worker memory usage by enforcing single concurrency and process restarts after every task (`--max-tasks-per-child=1`), resolving potential memory leaks.
+- **Backend**: Implemented daily database auto-cleanup task (retention policy of 7 days) to prevent disk space exhaustion.
