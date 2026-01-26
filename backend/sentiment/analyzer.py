@@ -56,13 +56,20 @@ class SentimentAnalyzer:
         self.model_dir = Path(os.path.join(os.path.dirname(os.path.dirname(__file__)), "model_quantized"))
         self.tokenizer_id = "mrm8488/distilroberta-finetuned-financial-news-sentiment-analysis"
         
+        self.tokenizer = None
+        self.model = None
+        self.initialized = True
+
+    def _ensure_model_loaded(self):
+        """Ensure the model is loaded before use"""
+        if self.model is not None:
+            return
+            
         try:
             self._load_model()
         except Exception as e:
             logger.critical(f"FATAL: Failed to load ONNX model: {e}")
-            raise RuntimeError("Could not load financial sentiment model. Check model_quantized directory.") from e
-
-        self.initialized = True
+            raise RuntimeError("Could not load financial sentiment model.") from e
 
     def _load_model(self):
         """Load the quantized ONNX model"""
@@ -91,6 +98,8 @@ class SentimentAnalyzer:
         if not text or not text.strip():
             return 0.0, SentimentLabel.NEUTRAL
 
+        self._ensure_model_loaded()
+        
         if self.model is None:
              # Fallback if model not loaded
             return 0.0, SentimentLabel.NEUTRAL

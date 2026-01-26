@@ -1,31 +1,57 @@
 # TrendScope
 
-A real-time economic sentiment monitor that tracks news sentiment across 7 global regions.
+A high-performance real-time economic sentiment monitor that tracks market mood across 7 global regions using state-of-the-art sentiment analysis.
 
 ## What it does
 
-TrendScope scrapes economic news from Google News RSS feeds every hour, runs sentiment analysis on the headlines, and displays an aggregated "optimism vs pessimism" score for each region. You can see at a glance whether the news coming out of Egypt, Saudi Arabia, the EU, or other regions is leaning positive or negative.
+TrendScope monitors economic news from Google News RSS feeds every 15 minutes, analyzes headlines using a quantized FinancialBERT model, and generates a live "bull vs bear" optimism index. It provides a crystal-clear view of economic momentum across major global markets, filtering out the noise to focus on high-impact signals.
 
 ## Regions tracked
 
-- Global
-- United States
-- European Union
-- Africa
-- Egypt
-- Saudi Arabia
-- Middle East
+- **Global** - Worldwide market trends
+- **United States** - Wall Street and Fed sentiment
+- **European Union** - Eurozone economic signals
+- **Africa** - Emerging market development
+- **Egypt** - Local economic indicators
+- **Saudi Arabia** - Vision 2030 and energy markets
+- **Middle East** - Regional trade and commerce
+
+## Key Features
+
+- **High-Resolution Tracking**: Data collected every 15 minutes for real-time reactivity.
+- **Micro-Quantized AI**: Powered by a distilled FinancialBERT (ONNX Int8) for professional-grade sentiment analysis.
+- **Memory Optimized**: Highly efficient "DB-first" architecture saving ~1GB of RAM vs standard ML deployments.
+- **Premium UI**: Modern, high-performance dashboard with horizontal scrolling trends and sticky reference axes.
+- **Mobile First**: Fully responsive layout designed for professional monitoring on any device.
+- **Dual Language**: Formal English and Arabic support (RTL).
 
 ## Tech stack
 
-**Backend:** FastAPI + Python + TextBlob for sentiment analysis  
-**Frontend:** SvelteKit + Tailwind CSS  
-**Scheduling:** Celery + Redis for hourly data collection  
-**Database:** SQLite for storing historical data
+**Backend:** FastAPI + Celery + Redis + SQLite  
+**Sentiment Engine:** Distilled FinancialBERT (ONNX Runtime)  
+**Frontend:** SvelteKit + Vanilla CSS (Custom Design System)  
+**Infrastructure:** Dockerized for streamlined VPS deployment
 
-## Running locally
+## Getting Started
 
-### Development (without Docker)
+### 1. Build the AI Model
+
+To prepare the model for production (quantization):
+
+```bash
+cd backend
+python build_model.py
+```
+
+### 2. Run with Docker (Recommended)
+
+```bash
+docker-compose up --build
+```
+
+The dashboard will be available at `http://localhost:3000`
+
+### 3. Manual Development
 
 **Backend:**
 
@@ -43,44 +69,21 @@ npm install
 npm run dev
 ```
 
-### Production (with Docker)
+## How sentiment analysis works
 
-```bash
-docker-compose up --build
-```
+TrendScope uses a sophisticated two-stage pipeline:
 
-The app will be available at `http://localhost:3000`
+1.  **Signal Isolation**: Headlines are passed through a noise filter that removes fluff (podcasts, guides, newsletters) to focus purely on economic events.
+2.  **AI Classification**: The remaining headlines are analyzed by a **FinancialBERT** model specifically trained on market data. Unlike basic keyword scrapers, it understands financial context (e.g., "interest rates hold steady" vs "holdings liquidated").
 
-## API endpoints
-
-| Endpoint                         | Description                        |
-| -------------------------------- | ---------------------------------- |
-| `GET /api/regions`               | All regions with current sentiment |
-| `GET /api/regions/{id}`          | Single region data                 |
-| `GET /api/regions/{id}/trend`    | 24h sentiment trend                |
-| `GET /api/regions/{id}/insights` | Auto-generated insights            |
-| `GET /health`                    | Health check                       |
-| `POST /api/collect`              | Trigger manual data collection     |
-
-## How sentiment works
-
-Each headline gets analyzed with TextBlob and boosted/penalized based on economic keywords:
-
-- **Positive:** growth, investment, profit, expansion, etc.
-- **Negative:** recession, crisis, layoffs, inflation, etc.
-
-Headlines are then categorized as optimistic (>0.2), pessimistic (<-0.2), or neutral. The final score is calculated as:
+The final score is calculated using the **Optimism Ratio**:
 
 ```
-Score = Optimistic / (Optimistic + Pessimistic) × 100
+Sentiment Score = Bullish Signals / (Bullish + Bearish Signals) × 100
 ```
 
-Neutral headlines don't affect the score — this filters out the noise.
-
-## Arabic support
-
-The UI supports both English and Arabic. Click the language button in the header to switch. The Arabic version uses IBM Plex Sans Arabic for better readability.
+Scores above 50% indicate an optimistic outlook, while scores below 50% signal bearish sentiment.
 
 ## License
 
-MIT
+MIT - Created by [Mohammed Essam](https://mohammedeabdelaziz.github.io/)

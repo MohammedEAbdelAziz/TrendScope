@@ -11,9 +11,6 @@ import logging
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from database import save_sentiment_snapshot, save_headlines_batch, init_db
-from scrapers.google_news_scraper import GoogleNewsRSSScraper
-from sentiment.analyzer import analyzer
 from models import REGIONS
 
 logging.basicConfig(level=logging.INFO)
@@ -36,9 +33,9 @@ app.conf.update(
     enable_utc=True,
     # Beat schedule for hourly data collection
     beat_schedule={
-        "collect-sentiment-hourly": {
+        "collect-sentiment-15min": {
             "task": "celery_tasks.collect_all_regions",
-            "schedule": crontab(minute=0),  # Every hour at :00
+            "schedule": crontab(minute="*/15"),  # Every 15 minutes
         },
         "cleanup-db-daily": {
             "task": "celery_tasks.cleanup_db",
@@ -54,6 +51,11 @@ def collect_region_data(region_id: str, region_name: str) -> dict:
     logger.info(f"Collecting data for region: {region_id}")
     
     try:
+        # Lazy imports to save RAM on scheduler
+        from scrapers.google_news_scraper import GoogleNewsRSSScraper
+        from sentiment.analyzer import analyzer
+        from database import save_sentiment_snapshot, save_headlines_batch
+
         # Initialize scraper
         scraper = GoogleNewsRSSScraper(region_id, region_name)
         
@@ -92,7 +94,10 @@ def collect_region_data(region_id: str, region_name: str) -> dict:
             region_id=region_id,
             score=percentage_score,
             label=overall_label.value,
-            headline_count=len(headlines)
+            headline_count=len(headlines),
+            bull_count=polarity_counts.bull_count,
+            bear_count=polarity_counts.bear_count,
+            neutral_count=polarity_counts.neutral_count
         )
         
         # Save headlines for keyword analysis
@@ -143,6 +148,10 @@ def manual_collect() -> dict:
 # Standalone script for manual data collection without Celery
 def run_collection_now():
     """Run data collection immediately (without Celery)"""
+    from database import init_db, save_sentiment_snapshot, save_headlines_batch
+    from scrapers.google_news_scraper import GoogleNewsRSSScraper
+    from sentiment.analyzer import analyzer
+    
     init_db()
     logger.info("Running immediate data collection...")
     
@@ -175,7 +184,12 @@ def run_collection_now():
                 polarity_counts.bear_count
             )
             
-            save_sentiment_snapshot(region_id, percentage_score, overall_label.value, len(headlines))
+            save_sentiment_snapshot(
+                region_id, percentage_score, overall_label.value, len(headlines),
+                bull_count=polarity_counts.bull_count,
+                bear_count=polarity_counts.bear_count,
+                neutral_count=polarity_counts.neutral_count
+            )
             save_headlines_batch(region_id, headlines)
             
             logger.info(f"Collected {len(headlines)} headlines for {region_id}: {percentage_score:.1f}%")

@@ -20,11 +20,9 @@ from models import (
     Headline, RegionSentiment, APIResponse, 
     SentimentLabel, REGIONS
 )
-from sentiment.analyzer import analyzer
-from scrapers.google_news_scraper import GoogleNewsRSSScraper
 from database import (
     get_trend_data, get_sentiment_change, save_sentiment_snapshot, 
-    save_headlines_batch, init_db
+    save_headlines_batch, init_db, get_latest_sentiment, get_latest_headlines
 )
 from insights import generate_insights
 
@@ -57,16 +55,7 @@ app.add_middleware(
 # Cache for API responses (15 minutes TTL)
 cache: TTLCache = TTLCache(maxsize=100, ttl=900)
 
-# Initialize scrapers - all using Google News RSS
-SCRAPERS = {
-    "global": GoogleNewsRSSScraper("global", "Global"),
-    "us": GoogleNewsRSSScraper("us", "United States"),
-    "eu": GoogleNewsRSSScraper("eu", "European Union"),
-    "africa": GoogleNewsRSSScraper("africa", "Africa"),
-    "egypt": GoogleNewsRSSScraper("egypt", "Egypt"),
-    "saudi": GoogleNewsRSSScraper("saudi", "Saudi Arabia"),
-    "middleeast": GoogleNewsRSSScraper("middleeast", "Middle East"),
-}
+# Scrapers and Analyzer are now isolated in workers to save RAM
 
 
 # New Pydantic models for additional endpoints
@@ -96,94 +85,61 @@ class InsightsResponse(BaseModel):
     insights: List[InsightItem]
 
 
-def process_region(region_id: str, save_to_db: bool = True) -> RegionSentiment:
-    """Process a single region and return sentiment data with Bull/Bear polarity"""
+def process_region(region_id: str, save_to_db: bool = False) -> RegionSentiment:
+    """Get region sentiment from cache or database"""
     
     # Check cache first
     cache_key = f"region_{region_id}"
     if cache_key in cache:
         return cache[cache_key]
     
-    scraper = SCRAPERS.get(region_id)
-    if not scraper:
-        raise ValueError(f"Unknown region: {region_id}")
+    # Fetch latest snapshot from DB
+    latest = get_latest_sentiment(region_id)
     
-    # Fetch headlines
-    raw_headlines = scraper.fetch_headlines()
-    
-    # Analyze sentiment for each headline with noise filtering
-    headlines = []
-    scores = []
-    headlines_for_db = []
-    filtered_count = 0
-    
-    for raw in raw_headlines:
-        title = raw["title"]
+    if latest:
+        # Get headlines associated with this snapshot
+        raw_headlines = get_latest_headlines(region_id, limit=10)
         
-        # Skip noise/fluff headlines
-        if analyzer.is_noise(title):
-            filtered_count += 1
-            logger.debug(f"Filtered noise headline: {title[:50]}...")
-            continue
+        headlines = [
+            Headline(
+                title=h["title"],
+                source=h["source"],
+                url=h["url"],
+                published_at=h["published_at"] if isinstance(h["published_at"], datetime) else None,
+                sentiment_score=h["sentiment_score"],
+                sentiment_label=SentimentLabel(h["sentiment_label"])
+            ) for h in raw_headlines
+        ]
         
-        score, label = analyzer.analyze(title)
-        scores.append(score)
-        
-        headline = Headline(
-            title=title,
-            source=raw.get("source", "Unknown"),
-            url=raw.get("url", "#"),
-            published_at=raw.get("published_at"),
-            sentiment_score=round(score, 3),
-            sentiment_label=label
+        region_sentiment = RegionSentiment(
+            region_id=region_id,
+            region_name=REGIONS.get(region_id, region_id),
+            sentiment_score=latest["score"],
+            sentiment_label=SentimentLabel(latest["label"]),
+            headline_count=latest["headline_count"],
+            bull_count=latest.get("bull_count", 0),
+            bear_count=latest.get("bear_count", 0),
+            neutral_count=latest.get("neutral_count", 0),
+            filtered_count=0, # No longer tracked live in API
+            top_headlines=headlines,
+            last_updated=latest["timestamp"] if isinstance(latest["timestamp"], datetime) else datetime.now()
         )
-        headlines.append(headline)
         
-        # Prepare for DB
-        headlines_for_db.append({
-            "title": title,
-            "source": raw.get("source", "Unknown"),
-            "url": raw.get("url", "#"),
-            "sentiment_score": round(score, 3),
-            "sentiment_label": label.value
-        })
-    
-    # Calculate aggregate sentiment using polarity counting
-    avg_score, overall_label, polarity_counts = analyzer.aggregate_sentiment(scores)
-    
-    # Use polarity score (Bull/Bear ratio) instead of average
-    polarity_score = analyzer.calculate_polarity_score(
-        polarity_counts.bull_count, 
-        polarity_counts.bear_count
-    )
-    
-    # Create region sentiment object with Bull/Bear counts
-    region_sentiment = RegionSentiment(
-        region_id=region_id,
-        region_name=REGIONS.get(region_id, region_id),
-        sentiment_score=polarity_score,
-        sentiment_label=overall_label,
-        headline_count=len(headlines),
-        bull_count=polarity_counts.bull_count,
-        bear_count=polarity_counts.bear_count,
-        neutral_count=polarity_counts.neutral_count,
-        filtered_count=filtered_count,
-        top_headlines=headlines[:10],  # Top 10 headlines
-        last_updated=datetime.now()
-    )
-    
-    # Save to database for historical tracking
-    if save_to_db and len(headlines) > 0:
-        try:
-            save_sentiment_snapshot(region_id, polarity_score, overall_label.value, len(headlines))
-            save_headlines_batch(region_id, headlines_for_db)
-        except Exception as e:
-            logger.warning(f"Failed to save to database: {e}")
-    
-    # Store in cache
-    cache[cache_key] = region_sentiment
-    
-    return region_sentiment
+        # Store in cache
+        cache[cache_key] = region_sentiment
+        return region_sentiment
+    else:
+        # Fallback if DB is empty - triggering a live collection is too heavy for main process RAM
+        # Return a "pending" state or empty data
+        return RegionSentiment(
+            region_id=region_id,
+            region_name=REGIONS.get(region_id, region_id),
+            sentiment_score=50.0,
+            sentiment_label=SentimentLabel.NEUTRAL,
+            headline_count=0,
+            top_headlines=[],
+            last_updated=datetime.now()
+        )
 
 
 @app.get("/")
@@ -348,18 +304,10 @@ async def get_region_insights(region_id: str):
 
 
 @app.post("/api/collect")
-async def trigger_collection(background_tasks: BackgroundTasks):
-    """Manually trigger data collection for all regions (saves to database)"""
-    def collect_all():
-        for region_id in REGIONS.keys():
-            try:
-                process_region(region_id, save_to_db=True)
-                logger.info(f"Collected data for {region_id}")
-            except Exception as e:
-                logger.error(f"Error collecting {region_id}: {e}")
-    
-    background_tasks.add_task(collect_all)
-    return {"success": True, "message": "Data collection started in background"}
+async def trigger_collection():
+    """Clear internal cache to show latest DB data (triggered by frontend Refresh)"""
+    cache.clear()
+    return {"success": True, "message": "Cache cleared, will fetch latest data from DB"}
 
 
 @app.post("/api/refresh")

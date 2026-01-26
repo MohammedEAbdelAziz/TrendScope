@@ -39,6 +39,9 @@ def init_db():
             sentiment_score REAL NOT NULL,
             sentiment_label TEXT NOT NULL,
             headline_count INTEGER NOT NULL,
+            bull_count INTEGER DEFAULT 0,
+            bear_count INTEGER DEFAULT 0,
+            neutral_count INTEGER DEFAULT 0,
             recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(region_id, recorded_at)
         )
@@ -74,16 +77,20 @@ def init_db():
     logger.info("Database initialized successfully")
 
 
-def save_sentiment_snapshot(region_id: str, score: float, label: str, headline_count: int):
+def save_sentiment_snapshot(region_id: str, score: float, label: str, headline_count: int, 
+                            bull_count: int = 0, bear_count: int = 0, neutral_count: int = 0):
     """Save a sentiment snapshot to history"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
         cursor.execute("""
-            INSERT INTO sentiment_history (region_id, sentiment_score, sentiment_label, headline_count)
-            VALUES (?, ?, ?, ?)
-        """, (region_id, score, label, headline_count))
+            INSERT INTO sentiment_history (
+                region_id, sentiment_score, sentiment_label, headline_count,
+                bull_count, bear_count, neutral_count
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (region_id, score, label, headline_count, bull_count, bear_count, neutral_count))
         conn.commit()
         logger.info(f"Saved sentiment snapshot for {region_id}: {score:.1f}%")
     except sqlite3.IntegrityError:
@@ -133,6 +140,9 @@ def get_trend_data(region_id: str, hours: int = 24) -> list[dict]:
             "score": row["sentiment_score"],
             "label": row["sentiment_label"],
             "headline_count": row["headline_count"],
+            "bull_count": row["bull_count"],
+            "bear_count": row["bear_count"],
+            "neutral_count": row["neutral_count"],
             # Convert to ISO format with Z suffix for UTC (SQLite stores in UTC)
             "timestamp": row["recorded_at"].replace(" ", "T") + "Z" if row["recorded_at"] else None
         }
@@ -146,7 +156,8 @@ def get_latest_sentiment(region_id: str) -> Optional[dict]:
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT sentiment_score, sentiment_label, headline_count, recorded_at
+        SELECT sentiment_score, sentiment_label, headline_count, recorded_at,
+               bull_count, bear_count, neutral_count
         FROM sentiment_history
         WHERE region_id = ?
         ORDER BY recorded_at DESC
@@ -161,9 +172,41 @@ def get_latest_sentiment(region_id: str) -> Optional[dict]:
             "score": row["sentiment_score"],
             "label": row["sentiment_label"],
             "headline_count": row["headline_count"],
+            "bull_count": row["bull_count"],
+            "bear_count": row["bear_count"],
+            "neutral_count": row["neutral_count"],
             "timestamp": row["recorded_at"]
         }
     return None
+
+
+def get_latest_headlines(region_id: str, limit: int = 10) -> list[dict]:
+    """Get the most recent headlines for a region"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT title, source, url, sentiment_score, sentiment_label, recorded_at
+        FROM headlines_history
+        WHERE region_id = ?
+        ORDER BY recorded_at DESC
+        LIMIT ?
+    """, (region_id, limit))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [
+        {
+            "title": row["title"],
+            "source": row["source"],
+            "url": row["url"],
+            "sentiment_score": row["sentiment_score"],
+            "sentiment_label": row["sentiment_label"],
+            "published_at": row["recorded_at"]
+        }
+        for row in rows
+    ]
 
 
 def get_sentiment_change(region_id: str, hours: int = 24) -> dict:

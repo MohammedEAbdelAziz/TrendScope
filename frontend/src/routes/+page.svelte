@@ -225,10 +225,12 @@
 <div class="min-h-screen bg-[#0a0f1a]" dir={rtl ? "rtl" : "ltr"}>
   <!-- Header -->
   <header class="border-b border-slate-800 bg-[#0d1320] px-6 py-4">
-    <div class="flex items-center justify-between max-w-[1600px] mx-auto">
+    <div
+      class="flex flex-col md:flex-row md:items-center justify-between max-w-[1600px] mx-auto gap-4"
+    >
       <div class="flex items-center gap-3">
         <div
-          class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center"
+          class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center shrink-0"
         >
           <BarChart3 class="w-5 h-5 text-white" />
         </div>
@@ -239,7 +241,7 @@
           <p class="text-xs text-slate-400">{t.appSubtitle}</p>
         </div>
       </div>
-      <div class="flex items-center gap-6">
+      <div class="flex flex-wrap items-center gap-4 md:gap-6">
         <!-- Language Switcher -->
         <Button
           variant="ghost"
@@ -265,7 +267,6 @@
                 {
                   hour: "2-digit",
                   minute: "2-digit",
-                  timeZoneName: "short",
                 },
               )}</span
             ></span
@@ -293,9 +294,9 @@
         <Button onclick={loadData} class="mt-4">{t.tryAgain}</Button>
       </Card>
     {:else}
-      <div class="grid grid-cols-12 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <!-- Left Sidebar - Region Cards -->
-        <div class="col-span-3 space-y-3">
+        <div class="lg:col-span-3 space-y-3 order-2 lg:order-1">
           <h2
             class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4"
           >
@@ -391,7 +392,7 @@
         </div>
 
         <!-- Center Content -->
-        <div class="col-span-6 space-y-6">
+        <div class="lg:col-span-6 space-y-6 order-1 lg:order-2">
           {#if selectedRegion && selectedConfig}
             {@const SelectedIcon = iconComponents[selectedConfig.icon]}
 
@@ -419,11 +420,15 @@
             </div>
 
             <!-- Sentiment Overview Card -->
-            <Card class="p-6 bg-slate-900/50 border-slate-800">
-              <div class="flex items-start justify-between">
+            <Card class="p-4 md:p-6 bg-slate-900/50 border-slate-800">
+              <div
+                class="flex flex-col xl:flex-row items-center xl:items-start justify-between gap-8"
+              >
                 <!-- Donut Chart -->
-                <div class="flex items-center gap-8">
-                  <div class="relative w-48 h-48">
+                <div
+                  class="flex flex-col sm:flex-row items-center gap-6 md:gap-8 w-full xl:w-auto"
+                >
+                  <div class="relative w-40 h-40 md:w-48 md:h-48 shrink-0">
                     <svg viewBox="0 0 100 100" class="w-full h-full -rotate-90">
                       <circle
                         cx="50"
@@ -464,7 +469,9 @@
                   </div>
 
                   <!-- Stats -->
-                  <div class="space-y-4">
+                  <div
+                    class="grid grid-cols-3 sm:flex sm:flex-col gap-4 w-full"
+                  >
                     <div>
                       <p
                         class="text-xs text-slate-500 uppercase tracking-wider flex items-center gap-1"
@@ -502,9 +509,9 @@
                 </div>
 
                 <!-- Sentiment Balance Visualization -->
-                <div class="flex-1 {rtl ? 'mr-8' : 'ml-8'}">
+                <div class="w-full xl:flex-1">
                   <p
-                    class="text-xs text-slate-500 uppercase tracking-wider mb-3"
+                    class="text-xs text-slate-500 uppercase tracking-wider mb-3 text-center xl:text-left"
                   >
                     {t.sentimentBalance}
                   </p>
@@ -589,127 +596,150 @@
                     class="h-28 bg-slate-800/30 rounded-lg animate-pulse"
                   ></div>
                 {:else if trendData.length > 0}
-                  <div class="h-28 bg-slate-800/30 rounded-lg p-3">
-                    <!-- Y-axis labels -->
-                    <div class="flex h-full">
+                  <div
+                    class="h-32 bg-slate-800/30 rounded-lg p-3 flex flex-col"
+                  >
+                    <!-- Y-axis and Scrollable Content -->
+                    <div class="flex-1 flex overflow-hidden">
+                      <!-- Fixed Y-axis -->
                       <div
                         class="flex flex-col justify-between text-[10px] text-slate-500 {rtl
                           ? 'pl-2'
-                          : 'pr-2'}"
+                          : 'pr-2'} pb-1"
                       >
                         <span>100</span>
                         <span>50</span>
                         <span>0</span>
                       </div>
-                      <!-- Bars -->
-                      <!-- Bars -->
-                      <div
-                        class="flex-1 flex items-end justify-around gap-2 px-2 relative"
-                      >
-                        {#each trendData as point}
-                          <div
-                            class="h-full flex flex-col justify-end group relative w-full max-w-[40px]"
-                          >
-                            <!-- Bar -->
-                            <div
-                              class="w-full rounded-t-md transition-all duration-300 hover:opacity-90 relative"
-                              style="height: {Math.max(
-                                point.score,
-                                4,
-                              )}%; background-color: {point.label === 'positive'
-                                ? '#10b981'
-                                : point.label === 'negative'
-                                  ? '#f43f5e'
-                                  : '#f59e0b'};"
-                            >
-                              <!-- Gradient overlay for depth -->
-                              <div
-                                class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-t-md"
-                              ></div>
-                            </div>
 
-                            <!-- Custom Tooltip -->
-                            <div
-                              class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20 w-max pointer-events-none transform transition-all duration-200"
-                            >
+                      <!-- Scrollable Content -->
+                      <div
+                        class="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar"
+                      >
+                        <div
+                          class="h-full flex flex-col min-w-full"
+                          style="width: {Math.max(
+                            100,
+                            trendData.length * 20,
+                          )}px"
+                        >
+                          <!-- Bars Row -->
+                          <div
+                            class="flex-1 flex items-end justify-start px-1 relative"
+                          >
+                            {#each trendData as point}
                               <div
-                                class="bg-slate-900/95 backdrop-blur-sm border border-slate-700 p-2.5 rounded-lg shadow-xl flex flex-col gap-1 min-w-[100px]"
+                                class="h-full flex flex-col justify-end group relative flex-1 min-w-[12px] max-w-[40px]"
                               >
+                                <!-- Bar -->
                                 <div
-                                  class="flex items-center justify-between gap-4"
+                                  class="mx-0.5 rounded-t-sm transition-all duration-300 hover:opacity-90 relative"
+                                  style="height: {Math.max(
+                                    point.score,
+                                    4,
+                                  )}%; background-color: {point.label ===
+                                  'positive'
+                                    ? '#10b981'
+                                    : point.label === 'negative'
+                                      ? '#f43f5e'
+                                      : '#f59e0b'};"
                                 >
-                                  <span
-                                    class="text-xs text-slate-400 font-medium"
-                                    >Score</span
-                                  >
-                                  <span
-                                    class="text-sm font-bold"
-                                    style="color: {point.label === 'positive'
-                                      ? '#34d399'
-                                      : point.label === 'negative'
-                                        ? '#fb7185'
-                                        : '#fbbf24'}"
-                                  >
-                                    {point.score.toFixed(1)}%
-                                  </span>
-                                </div>
-                                <div
-                                  class="w-full h-1 bg-slate-800 rounded-full overflow-hidden"
-                                >
+                                  <!-- Gradient overlay -->
                                   <div
-                                    class="h-full"
-                                    style="width: {point.score}%; background-color: {point.label ===
-                                    'positive'
-                                      ? '#34d399'
-                                      : point.label === 'negative'
-                                        ? '#fb7185'
-                                        : '#fbbf24'}"
+                                    class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-t-sm"
                                   ></div>
                                 </div>
+
+                                <!-- Tooltip -->
                                 <div
-                                  class="flex items-center justify-between gap-4 mt-1 pt-1 border-t border-slate-800"
+                                  class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20 w-max pointer-events-none transform transition-all duration-200"
                                 >
-                                  <span class="text-[10px] text-slate-500"
-                                    >Time</span
+                                  <div
+                                    class="bg-slate-900/95 backdrop-blur-sm border border-slate-700 p-2.5 rounded-lg shadow-xl flex flex-col gap-1 min-w-[100px]"
                                   >
-                                  <span class="text-xs text-slate-300">
-                                    {new Date(
-                                      point.timestamp,
-                                    ).toLocaleTimeString([], {
-                                      hour: "numeric",
-                                      minute: "2-digit",
-                                    })}
-                                  </span>
+                                    <div
+                                      class="flex items-center justify-between gap-4"
+                                    >
+                                      <span
+                                        class="text-xs text-slate-400 font-medium"
+                                        >Score</span
+                                      >
+                                      <span
+                                        class="text-sm font-bold"
+                                        style="color: {point.label ===
+                                        'positive'
+                                          ? '#34d399'
+                                          : point.label === 'negative'
+                                            ? '#fb7185'
+                                            : '#fbbf24'}"
+                                        >{point.score.toFixed(1)}%</span
+                                      >
+                                    </div>
+                                    <div
+                                      class="w-full h-1 bg-slate-800 rounded-full overflow-hidden"
+                                    >
+                                      <div
+                                        class="h-full"
+                                        style="width: {point.score}%; background-color: {point.label ===
+                                        'positive'
+                                          ? '#34d399'
+                                          : point.label === 'negative'
+                                            ? '#fb7185'
+                                            : '#fbbf24'}"
+                                      ></div>
+                                    </div>
+                                    <div
+                                      class="flex items-center justify-between gap-4 mt-1 pt-1 border-t border-slate-800"
+                                    >
+                                      <span class="text-[10px] text-slate-500"
+                                        >Time</span
+                                      >
+                                      <span class="text-xs text-slate-300"
+                                        >{new Date(
+                                          point.timestamp,
+                                        ).toLocaleTimeString([], {
+                                          hour: "numeric",
+                                          minute: "2-digit",
+                                        })}</span
+                                      >
+                                    </div>
+                                  </div>
+                                  <div
+                                    class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-700"
+                                  ></div>
                                 </div>
                               </div>
-                              <!-- Arrow -->
-                              <div
-                                class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-700"
-                              ></div>
-                            </div>
+                            {/each}
                           </div>
-                        {/each}
-                      </div>
-                    </div>
-                    <!-- X-axis labels -->
-                    <!-- X-axis labels -->
-                    <div class="flex {rtl ? 'pr-6' : 'pl-6'} mt-1">
-                      {#each trendData as point, i}
-                        <div class="flex-1 flex justify-center min-w-0">
-                          <span
-                            class="text-[9px] text-slate-500 whitespace-nowrap {i %
-                              Math.ceil(trendData.length / 6) !==
-                            0
-                              ? 'hidden'
-                              : ''}"
+
+                          <!-- Labels Row -->
+                          <div
+                            class="flex items-start justify-start px-1 h-6 mt-1 border-t border-slate-800/30"
                           >
-                            {new Date(point.timestamp).toLocaleTimeString([], {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
-                          </span>
+                            {#each trendData as point, i}
+                              <div
+                                class="flex-1 min-w-[12px] max-w-[40px] flex justify-center"
+                              >
+                                <span
+                                  class="text-[9px] text-slate-500 whitespace-nowrap {i %
+                                    Math.ceil(trendData.length / 8) !==
+                                  0
+                                    ? 'hidden'
+                                    : ''}"
+                                >
+                                  {new Date(point.timestamp).toLocaleTimeString(
+                                    [],
+                                    {
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                    },
+                                  )}
+                                </span>
+                              </div>
+                            {/each}
+                          </div>
                         </div>
-                      {/each}
+                      </div>
                     </div>
                   </div>
                 {:else}
@@ -798,7 +828,7 @@
         </div>
 
         <!-- Right Sidebar - AI Insights -->
-        <div class="col-span-3">
+        <div class="lg:col-span-3 order-3">
           <Card class="p-5 bg-slate-900/50 border-slate-800 sticky top-6">
             <div class="flex items-center gap-2 mb-5">
               <div
