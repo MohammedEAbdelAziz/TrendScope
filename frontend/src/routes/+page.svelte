@@ -597,7 +597,7 @@
                   ></div>
                 {:else if trendData.length > 0}
                   <div
-                    class="h-32 bg-slate-800/30 rounded-lg p-3 flex flex-col"
+                    class="h-64 bg-slate-800/30 rounded-lg p-3 flex flex-col"
                   >
                     <!-- Y-axis and Scrollable Content -->
                     <div class="flex-1 flex overflow-hidden">
@@ -605,7 +605,7 @@
                       <div
                         class="flex flex-col justify-between text-[10px] text-slate-500 {rtl
                           ? 'pl-2'
-                          : 'pr-2'} pb-1"
+                          : 'pr-2'} pt-20 pb-1"
                       >
                         <span>100</span>
                         <span>50</span>
@@ -625,7 +625,7 @@
                         >
                           <!-- Bars Row -->
                           <div
-                            class="flex-1 flex items-end justify-start px-1 relative"
+                            class="flex-1 flex items-end justify-start px-12 pt-20 relative"
                           >
                             {#each trendData as point}
                               <div
@@ -714,7 +714,7 @@
 
                           <!-- Labels Row -->
                           <div
-                            class="flex items-start justify-start px-1 h-6 mt-1 border-t border-slate-800/30"
+                            class="flex items-start justify-start px-12 h-6 mt-1 border-t border-slate-800/30"
                           >
                             {#each trendData as point, i}
                               <div
