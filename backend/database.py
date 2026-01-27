@@ -47,6 +47,22 @@ def init_db():
         )
     """)
     
+    # Check for missing columns (migration for existing databases)
+    cursor.execute("PRAGMA table_info(sentiment_history)")
+    columns = [row[1] for row in cursor.fetchall()]
+    
+    if "bull_count" not in columns:
+        logger.info("Migrating database: Adding bull_count column")
+        cursor.execute("ALTER TABLE sentiment_history ADD COLUMN bull_count INTEGER DEFAULT 0")
+        
+    if "bear_count" not in columns:
+        logger.info("Migrating database: Adding bear_count column")
+        cursor.execute("ALTER TABLE sentiment_history ADD COLUMN bear_count INTEGER DEFAULT 0")
+        
+    if "neutral_count" not in columns:
+        logger.info("Migrating database: Adding neutral_count column")
+        cursor.execute("ALTER TABLE sentiment_history ADD COLUMN neutral_count INTEGER DEFAULT 0")
+    
     # Create index for faster queries
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_region_time 
@@ -126,7 +142,8 @@ def get_trend_data(region_id: str, hours: int = 24) -> list[dict]:
     cutoff_str = cutoff_time.strftime('%Y-%m-%d %H:%M:%S')
     
     cursor.execute("""
-        SELECT sentiment_score, sentiment_label, headline_count, recorded_at
+        SELECT sentiment_score, sentiment_label, headline_count, recorded_at,
+               bull_count, bear_count, neutral_count
         FROM sentiment_history
         WHERE region_id = ? AND recorded_at >= ?
         ORDER BY recorded_at ASC
