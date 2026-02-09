@@ -17,6 +17,7 @@
   import { Card } from "$lib/components/ui/card";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
+  import RegionFlag from "$lib/components/RegionFlag.svelte";
 
   // Lucide icons
   import {
@@ -60,6 +61,7 @@
   let regions = $state<RegionSentiment[]>([]);
   let selectedRegionId = $state<string>("global");
   let isLoading = $state(true);
+  let isRefreshing = $state(false);
   let error = $state<string | null>(null);
   let lastUpdated = $state<Date>(new Date());
 
@@ -194,8 +196,26 @@
   }
 
   async function handleRefresh() {
-    await triggerCollection();
-    await loadData();
+    if (isRefreshing) return; // Prevent multiple simultaneous refreshes
+
+    isRefreshing = true;
+    try {
+      // Trigger new data collection
+      await triggerCollection();
+      // Wait a moment for collection to start
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Reload all data
+      await loadData();
+    } catch (err) {
+      console.error("Refresh failed:", err);
+      error = err instanceof Error ? err.message : "Failed to refresh data";
+      // Clear error after 3 seconds
+      setTimeout(() => {
+        error = null;
+      }, 3000);
+    } finally {
+      isRefreshing = false;
+    }
   }
 
   // Get localized sentiment label
@@ -276,10 +296,14 @@
           variant="outline"
           size="sm"
           onclick={handleRefresh}
-          disabled={isLoading}
-          class="border-slate-700 bg-slate-800 hover:bg-slate-700 text-white"
+          disabled={isLoading || isRefreshing}
+          class="border-slate-700 bg-slate-800 hover:bg-slate-700 text-white disabled:opacity-50"
         >
-          <RefreshCw class="w-4 h-4 {rtl ? 'ml-2' : 'mr-2'}" />
+          <RefreshCw
+            class="w-4 h-4 {rtl ? 'ml-2' : 'mr-2'} {isRefreshing
+              ? 'animate-spin'
+              : ''}"
+          />
           {t.refresh}
         </Button>
       </div>
@@ -322,7 +346,7 @@
                 <div
                   class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center"
                 >
-                  <IconComponent class="w-4 h-4 text-slate-300" />
+                  <RegionFlag regionId={config.id} class="w-5 h-5" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <h3 class="font-semibold text-white text-sm">
@@ -401,7 +425,7 @@
               <div
                 class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center"
               >
-                <SelectedIcon class="w-6 h-6 text-blue-400" />
+                <RegionFlag regionId={selectedConfig.id} class="w-7 h-7" />
               </div>
               <div>
                 <h2 class="text-2xl font-bold text-white">
@@ -925,6 +949,44 @@
           </svg>
           {t.footer.repo}
         </a>
+
+        <!-- Akamaar Hire Message -->
+        <div
+          class="flex flex-col items-center gap-3 py-4 px-6 rounded-lg bg-slate-800/20 border border-slate-800/50 max-w-md"
+        >
+          <div class="flex items-center gap-2 text-sm text-slate-400">
+            <span>{t.footer.builtBy}</span>
+            <a
+              href="https://akamaar.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-blue-400 hover:text-blue-300 transition-colors font-semibold"
+            >
+              akamaar
+            </a>
+          </div>
+          <p class="text-xs text-slate-400">
+            {t.footer.hireText}
+          </p>
+          <div class="flex items-center gap-4 text-xs">
+            <a
+              href="https://akamaar.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-slate-500 hover:text-blue-400 transition-colors flex items-center gap-1"
+            >
+              <ExternalLink class="w-3 h-3" />
+              akamaar.dev
+            </a>
+            <span class="text-slate-700">•</span>
+            <a
+              href="mailto:info@akamaar.dev"
+              class="text-slate-500 hover:text-blue-400 transition-colors"
+            >
+              info@akamaar.dev
+            </a>
+          </div>
+        </div>
 
         <!-- Disclaimer -->
         <div class="max-w-2xl text-xs text-slate-500 leading-relaxed">

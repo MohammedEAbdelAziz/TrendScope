@@ -80,6 +80,8 @@ export interface Translations {
     createdBy: string;
     repo: string;
     disclaimer: string;
+    builtBy: string;
+    hireText: string;
   };
 }
 
@@ -150,68 +152,70 @@ export const translations: Record<Locale, Translations> = {
       repo: "TrendScope GitHub Repo",
       disclaimer:
         "Traffic Data collection via Umami. I am not liable for data accuracy. This is not trade advice.",
+      builtBy: "Built by",
+      hireText: "Need custom analytics or data solutions?",
     },
   },
 
   ar: {
     // Professional Arabic translations - formal business terminology
-    appTitle: "مرصد التوجهات",
-    appSubtitle: "نظرة شاملة على التوجهات الاقتصادية",
-    systemOperational: "النظام فعّال",
+    appTitle: "مرصد الاقتصاد",
+    appSubtitle: "تحليل المعنويات الاقتصادية",
+    systemOperational: "النظام يعمل",
     lastUpdated: "آخر تحديث",
-    refresh: "تحديث البيانات",
+    refresh: "تحديث",
 
-    selectRegion: "اختيار المنطقة",
-    headlines: "خبر",
-    optimistic: "إيجابي",
-    pessimistic: "سلبي",
+    selectRegion: "اختر المنطقة",
+    headlines: "عنوان",
+    optimistic: "متفائل",
+    pessimistic: "متشائم",
     neutral: "محايد",
 
     regions: {
-      global: "عالمي",
-      us: "الولايات المتحدة الأمريكية",
+      global: "العالم",
+      us: "الولايات المتحدة",
       eu: "الاتحاد الأوروبي",
       africa: "أفريقيا",
-      egypt: "جمهورية مصر العربية",
-      saudi: "المملكة العربية السعودية",
-      middleeast: "منطقة الشرق الأوسط",
+      egypt: "مصر",
+      saudi: "السعودية",
+      middleeast: "الشرق الأوسط",
     },
 
     regionDescriptions: {
       global: "الأخبار الاقتصادية العالمية",
       us: "الأسواق والاقتصاد الأمريكي",
-      eu: "الأسواق والتجارة الأوروبية",
+      eu: "أسواق وتجارة أوروبا",
       africa: "التنمية والتجارة الأفريقية",
       egypt: "الاقتصاد المصري",
-      saudi: "رؤية المملكة 2030 والاقتصاد",
+      saudi: "رؤية 2030 والاقتصاد السعودي",
       middleeast: "الأخبار الاقتصادية الإقليمية",
     },
 
-    sentimentAnalysis: "تحليل التوجهات",
+    sentimentAnalysis: "تحليل المعنويات",
     realTimeAnalysis:
-      "تحليل آلي للأخبار الاقتصادية وتقارير الأسواق والسياسات التجارية.",
-    noiseFilterActive: "فلتر التصفية فعّال",
-    noiseFiltered: "خبر تمت تصفيته",
-    sentimentBalance: "ميزان التوجهات",
-    noActiveSignals: "لا توجد مؤشرات فعّالة",
+      "تحليل تلقائي للأخبار الاقتصادية وتقارير الأسواق والسياسات التجارية",
+    noiseFilterActive: "مرشح التشويش نشط",
+    noiseFiltered: "عنوان تمت تصفيته",
+    sentimentBalance: "توازن المعنويات",
+    noActiveSignals: "لا توجد إشارات نشطة",
     trend: "الاتجاه",
     rising: "صاعد",
     falling: "هابط",
     stable: "مستقر",
 
-    topHeadlines: "أبرز العناوين المؤثرة على التوجهات",
+    topHeadlines: "أبرز العناوين المؤثرة على المعنويات",
     today: "اليوم",
 
-    insights: "التحليلات",
-    analysisPending: "التحليل قيد المعالجة",
+    insights: "رؤى تحليلية",
+    analysisPending: "التحليل قيد الإعداد",
     analysisPendingText:
-      "جاري جمع البيانات للتحليل. ستظهر التحليلات بعد توفر بيانات كافية.",
+      "جاري جمع البيانات للتحليل. ستظهر الرؤى التحليلية بعد توفر بيانات كافية",
 
-    sentimentTrend24h: "اتجاه التوجهات خلال 24 ساعة",
+    sentimentTrend24h: "اتجاه المعنويات خلال 24 ساعة",
     dataPoints: "نقطة بيانات",
     last24Hours: "آخر 24 ساعة",
     noHistoricalData:
-      "لا تتوفر بيانات تاريخية حالياً. يتم جمع البيانات كل ساعة.",
+      "لا تتوفر بيانات تاريخية حالياً. يتم جمع البيانات كل ساعة",
 
     connectionError: "خطأ في الاتصال",
     tryAgain: "إعادة المحاولة",
@@ -220,7 +224,9 @@ export const translations: Record<Locale, Translations> = {
       createdBy: "تم التطوير بواسطة محمد عصام",
       repo: "المشروع على GitHub",
       disclaimer:
-        "يتم جمع البيانات لأغراض التحليل فقط. ولا يعتبر نصيحة مالية أو تجارية.",
+        "يتم جمع البيانات لأغراض التحليل فقط ولا يُعتبر نصيحة مالية أو استثمارية",
+      builtBy: "تم التطوير بواسطة",
+      hireText: "هل تحتاج إلى حلول تحليلية مخصصة؟",
     },
   },
 };

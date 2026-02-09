@@ -1,10 +1,63 @@
-feat: optimize RAM usage, improve data resolution, and fix mobile layout
+feat: Improve Arabic translations, and implement region flags
 
-- Optimized RAM usage (~1GB reduction) by implementing lazy ML model loading and isolating heavy imports to the Celery worker process.
-- Refactored backend to a "DB-first" model, where the FastAPI process serves historical snapshots directly from SQLite instead of performing live analysis.
-- Updated database schema to store detailed sentiment counts (bull/bear/neutral) for optimized dashboard reconstruction.
-- Increased data collection resolution from hourly to 15-minute intervals.
-- Fixed data collection logic to ensure only scheduled Celery tasks save to the database, preventing "mid-hour" timestamps from manual refreshes.
-- Updated frontend chart to support high-density data with horizontal scrolling and a persistent Y-axis.
-- Implemented responsive design fixes, including a stacking grid and adaptive charts for a premium mobile experience.
-- Refactored `SentimentAnalyzer` for lazy initialization of the ONNX model.
+## Features
+
+### Akamaar Hire Message
+
+- Added professional, non-pushy call-to-action in footer
+- Implemented "Built by akamaar" messaging with dual contact options (website + email)
+- Bilingual support (English/Arabic) for hire message
+- Subtle design matching existing footer aesthetic
+
+### Region Flags and Icons
+
+- Created RegionFlag component for visual region identification
+- Integrated SVG flag files for US, EU, Egypt, and Saudi Arabia
+- Added Africa continent SVG icon
+- Replaced generic Lucide icons with flags in region cards and title section
+- Used Globe icon for global region
+
+### Refresh Button Enhancement
+
+- Added spinning animation during refresh operation
+- Implemented proper async flow with error handling
+- Added debouncing to prevent multiple simultaneous refreshes
+- Improved visual feedback with disabled state and opacity
+- Fixed refresh functionality to actually trigger data collection and reload
+
+## Improvements
+
+### Arabic Translation Overhaul
+
+- Fixed region names: "عالمي" → "العالم" (Global), simplified country names
+- Improved terminology: "التوجهات" → "المعنويات" (Sentiment)
+- Updated sentiment labels: "إيجابي/سلبي" → "متفائل/متشائم" (Optimistic/Pessimistic)
+- Refined app title: "مرصد الاتجاهات" → "مرصد الاقتصاد"
+- Enhanced professional terminology throughout (e.g., "تحليل آلي" → "تحليل تلقائي")
+- Improved footer disclaimer to be more professional
+- Removed unnecessary punctuation and improved phrasing
+
+## Technical Changes
+
+### New Files
+
+- `frontend/src/lib/components/RegionFlag.svelte` - Flag/icon display component
+- `frontend/static/flags/africa.svg` - Africa continent icon
+
+### Modified Files
+
+- `frontend/src/routes/+page.svelte` - Integrated flags, fixed refresh button, added akamaar footer
+- `frontend/src/lib/i18n.ts` - Comprehensive Arabic translation improvements
+- `frontend/src/lib/components/RegionFlag.svelte` - Flag component implementation
+
+### Assets
+
+- Added SVG flags: `us.svg`, `eu.svg`, `eg.svg`, `sa.svg`, `africa.svg`, `middle-east.svg`
+
+## UI/UX Enhancements
+
+- Instant region recognition through flags
+- More engaging and professional visual design
+- Better cultural representation
+- Clear visual feedback for user actions
+- Improved accessibility with proper alt text
