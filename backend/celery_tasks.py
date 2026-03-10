@@ -4,10 +4,12 @@ Runs hourly to collect and store sentiment data
 """
 from celery import Celery
 from celery.schedules import crontab
+import json
 import os
 import sys
 import logging
 import gc
+import subprocess
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -33,7 +35,8 @@ app.conf.update(
     timezone="UTC",
     enable_utc=True,
     # Worker memory management
-    worker_max_tasks_per_child=10,  # Restart worker after 10 tasks to clear memory
+    worker_concurrency=1,
+    worker_max_tasks_per_child=1,
     worker_prefetch_multiplier=1,  # Process one task at a time
     task_acks_late=True,  # Acknowledge task after completion
     # Beat schedule for hourly data collection
@@ -50,117 +53,95 @@ app.conf.update(
 )
 
 
+def _extract_json_payload(stdout: str) -> dict:
+    """Extract the last JSON object emitted by the collection subprocess."""
+    for line in reversed(stdout.splitlines()):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            return json.loads(line)
+        except json.JSONDecodeError:
+            continue
+    raise ValueError("Collection subprocess did not emit JSON output")
+
+
+def _run_collection_subprocess(region_id: str | None = None) -> dict:
+    """Run the heavy collection code in a short-lived subprocess."""
+    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "collection_runner.py")
+    command = [sys.executable, script_path]
+    if region_id is not None:
+        command.extend(["--region", region_id])
+
+    env = os.environ.copy()
+    env.setdefault("TOKENIZERS_PARALLELISM", "false")
+    env.setdefault("OMP_NUM_THREADS", "1")
+    env.setdefault("OMP_WAIT_POLICY", "PASSIVE")
+
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=1800,
+        check=False,
+    )
+
+    if completed.stderr:
+        logger.info("Collection subprocess stderr:\n%s", completed.stderr.strip())
+
+    try:
+        payload = _extract_json_payload(completed.stdout)
+    except ValueError as exc:
+        raise RuntimeError(
+            f"Collection subprocess failed with exit code {completed.returncode}"
+        ) from exc
+
+    if completed.returncode != 0 and payload.get("success") is True:
+        logger.warning("Collection subprocess exited non-zero despite success payload")
+
+    return payload
+
+
 @app.task(name="celery_tasks.collect_region_data")
 def collect_region_data(region_id: str, region_name: str) -> dict:
     """Collect and store sentiment data for a single region"""
-    logger.info(f"Collecting data for region: {region_id}")
-    
-    try:
-        # Lazy imports to save RAM on scheduler
-        from scrapers.google_news_scraper import GoogleNewsRSSScraper
-        from sentiment.analyzer import analyzer
-        from database import save_sentiment_snapshot, save_headlines_batch
+    logger.info("Dispatching collection subprocess for region: %s (%s)", region_id, region_name)
 
-        # Initialize scraper
-        scraper = GoogleNewsRSSScraper(region_id, region_name)
-        
-        # Fetch headlines
-        raw_headlines = scraper.fetch_headlines()
-        
-        if not raw_headlines:
-            logger.warning(f"No headlines found for {region_id}")
-            return {"success": False, "region": region_id, "error": "No headlines"}
-        
-        # Analyze sentiment for each headline
-        headlines = []
-        scores = []
-        
-        for raw in raw_headlines:
-            score, label = analyzer.analyze(raw["title"])
-            scores.append(score)
-            
-            headlines.append({
-                "title": raw["title"],
-                "source": raw.get("source", "Unknown"),
-                "url": raw.get("url", "#"),
-                "sentiment_score": round(score, 3),
-                "sentiment_label": label.value  # Convert enum to string
-            })
-        
-        # Calculate aggregate sentiment using polarity counting
-        avg_score, overall_label, polarity_counts = analyzer.aggregate_sentiment(scores)
-        percentage_score = analyzer.calculate_polarity_score(
-            polarity_counts.bull_count, 
-            polarity_counts.bear_count
-        )
-        
-        # Save to database
-        save_sentiment_snapshot(
-            region_id=region_id,
-            score=percentage_score,
-            label=overall_label.value,
-            headline_count=len(headlines),
-            bull_count=polarity_counts.bull_count,
-            bear_count=polarity_counts.bear_count,
-            neutral_count=polarity_counts.neutral_count
-        )
-        
-        # Save headlines for keyword analysis
-        save_headlines_batch(region_id, headlines)
-        
-        logger.info(f"Successfully collected {len(headlines)} headlines for {region_id}, score: {percentage_score:.1f}%")
-        
-        # Store count before cleanup
-        headline_count = len(headlines)
-        
-        # Clean up memory
-        del scraper, raw_headlines, headlines, scores
+    try:
+        result = _run_collection_subprocess(region_id=region_id)
         gc.collect()
-        
-        return {
-            "success": True,
-            "region": region_id,
-            "score": percentage_score,
-            "label": overall_label.value,
-            "headline_count": headline_count
-        }
-        
-    except Exception as e:
-        logger.error(f"Error collecting data for {region_id}: {e}")
-        gc.collect()  # Clean up even on error
-        return {"success": False, "region": region_id, "error": str(e)}
+        return result
+    except Exception as exc:
+        logger.error("Error collecting data for %s: %s", region_id, exc)
+        gc.collect()
+        return {"success": False, "region": region_id, "error": str(exc)}
 
 
 @app.task(name="celery_tasks.collect_all_regions")
 def collect_all_regions() -> dict:
     """Collect data for all regions - called hourly by Celery Beat"""
     logger.info("Starting hourly data collection for all regions")
-    
-    results = {}
-    for region_id, region_name in REGIONS.items():
-        result = collect_region_data(region_id, region_name)
-        results[region_id] = result
-    
-    success_count = sum(1 for r in results.values() if r.get("success"))
-    logger.info(f"Completed hourly collection: {success_count}/{len(REGIONS)} regions successful")
-    
-    # Unload model to free memory between batch runs
+
     try:
-        from sentiment.analyzer import analyzer
-        analyzer.unload_model()
-    except Exception as e:
-        logger.warning(f"Failed to unload model: {e}")
-    
-    # Force garbage collection after processing all regions
-    gc.collect()
-    logger.info("Memory cleanup completed")
-    
-    return {
-        "success": success_count == len(REGIONS),
-        "total": len(REGIONS),
-        "successful": success_count,
-        "results": results
-    }
+        result = _run_collection_subprocess()
+        gc.collect()
+        logger.info(
+            "Completed hourly collection: %s/%s regions successful",
+            result.get("successful", 0),
+            result.get("total", len(REGIONS)),
+        )
+        return result
+    except Exception as exc:
+        logger.error("Error during hourly collection: %s", exc)
+        gc.collect()
+        return {
+            "success": False,
+            "total": len(REGIONS),
+            "successful": 0,
+            "results": {},
+            "error": str(exc),
+        }
 
 
 @app.task(name="celery_tasks.manual_collect")
@@ -172,56 +153,14 @@ def manual_collect() -> dict:
 # Standalone script for manual data collection without Celery
 def run_collection_now():
     """Run data collection immediately (without Celery)"""
-    from database import init_db, save_sentiment_snapshot, save_headlines_batch
-    from scrapers.google_news_scraper import GoogleNewsRSSScraper
-    from sentiment.analyzer import analyzer
-    
-    init_db()
-    logger.info("Running immediate data collection...")
-    
-    for region_id, region_name in REGIONS.items():
-        try:
-            scraper = GoogleNewsRSSScraper(region_id, region_name)
-            raw_headlines = scraper.fetch_headlines()
-            
-            if not raw_headlines:
-                logger.warning(f"No headlines for {region_id}")
-                continue
-            
-            headlines = []
-            scores = []
-            
-            for raw in raw_headlines:
-                score, label = analyzer.analyze(raw["title"])
-                scores.append(score)
-                headlines.append({
-                    "title": raw["title"],
-                    "source": raw.get("source", "Unknown"),
-                    "url": raw.get("url", "#"),
-                    "sentiment_score": round(score, 3),
-                    "sentiment_label": label.value
-                })
-            
-            avg_score, overall_label, polarity_counts = analyzer.aggregate_sentiment(scores)
-            percentage_score = analyzer.calculate_polarity_score(
-                polarity_counts.bull_count, 
-                polarity_counts.bear_count
-            )
-            
-            save_sentiment_snapshot(
-                region_id, percentage_score, overall_label.value, len(headlines),
-                bull_count=polarity_counts.bull_count,
-                bear_count=polarity_counts.bear_count,
-                neutral_count=polarity_counts.neutral_count
-            )
-            save_headlines_batch(region_id, headlines)
-            
-            logger.info(f"Collected {len(headlines)} headlines for {region_id}: {percentage_score:.1f}%")
-            
-        except Exception as e:
-            logger.error(f"Error collecting {region_id}: {e}")
-    
-    logger.info("Data collection complete!")
+    logger.info("Running immediate data collection in subprocess...")
+    result = _run_collection_subprocess()
+    logger.info(
+        "Immediate collection complete: %s/%s regions successful",
+        result.get("successful", 0),
+        result.get("total", len(REGIONS)),
+    )
+    return result
 
 
 @app.task(name="celery_tasks.cleanup_db")

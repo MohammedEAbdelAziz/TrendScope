@@ -2,13 +2,11 @@
 Sentiment Analysis Engine using Distilled FinancialBERT (ONNX Int8)
 """
 from pathlib import Path
-from typing import Dict, Union, List, Optional
+from typing import Any
 import numpy as np
 import logging
 import os
 import gc
-from optimum.onnxruntime import ORTModelForSequenceClassification
-from transformers import AutoTokenizer
 from models import SentimentLabel
 from dataclasses import dataclass
 import re
@@ -57,8 +55,9 @@ class SentimentAnalyzer:
         self.model_dir = Path(os.path.join(os.path.dirname(os.path.dirname(__file__)), "model_quantized"))
         self.tokenizer_id = "mrm8488/distilroberta-finetuned-financial-news-sentiment-analysis"
         
-        self.tokenizer = None
-        self.model = None
+        self.tokenizer: Any = None
+        self.model: Any = None
+        self.id2label = {0: "negative", 1: "neutral", 2: "positive"}
         self.initialized = True
 
     def _ensure_model_loaded(self):
@@ -79,13 +78,15 @@ class SentimentAnalyzer:
             self.model = None
             return
 
+        from optimum.onnxruntime import ORTModelForSequenceClassification
+        from transformers import AutoTokenizer
+
         logger.info(f"Loading ONNX model from {self.model_dir}...")
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_id)
         self.model = ORTModelForSequenceClassification.from_pretrained(
             self.model_dir,
             file_name="model_quantized.onnx"
         )
-        self.id2label = {0: "negative", 1: "neutral", 2: "positive"}
         logger.info("ONNX Model loaded successfully")
 
     def is_noise(self, text: str) -> bool:

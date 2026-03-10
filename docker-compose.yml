@@ -43,7 +43,7 @@ services:
       dockerfile: Dockerfile
       cache_from:
         - type=registry,ref=backend:latest
-    command: celery -A celery_tasks worker --loglevel=info --concurrency=1 --max-tasks-per-child=10 --prefetch-multiplier=1 --pool=solo
+    command: celery -A celery_tasks worker --loglevel=info --concurrency=1 --max-tasks-per-child=1 --prefetch-multiplier=1 --without-gossip --without-mingle --without-heartbeat
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -68,7 +68,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "celery -A celery_tasks inspect ping -d celery@$$HOSTNAME || exit 1"]
+      test: ["CMD-SHELL", "pgrep -f 'celery.*worker' || exit 1"]
       interval: 60s
       timeout: 10s
       retries: 3
