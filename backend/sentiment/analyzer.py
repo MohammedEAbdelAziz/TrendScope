@@ -6,6 +6,7 @@ from typing import Dict, Union, List, Optional
 import numpy as np
 import logging
 import os
+import gc
 from optimum.onnxruntime import ORTModelForSequenceClassification
 from transformers import AutoTokenizer
 from models import SentimentLabel
@@ -164,6 +165,17 @@ class SentimentAnalyzer:
         normalized = (polarity_score - 50) / 50
         
         return normalized, label, counts
+
+    def unload_model(self):
+        """Explicitly unload model to free memory"""
+        if self.model is not None:
+            logger.info("Unloading ONNX model to free memory...")
+            del self.model
+            del self.tokenizer
+            self.model = None
+            self.tokenizer = None
+            gc.collect()
+            logger.info("Model unloaded successfully")
 
 # Singleton
 analyzer = SentimentAnalyzer()

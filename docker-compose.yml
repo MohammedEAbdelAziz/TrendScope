@@ -7,33 +7,49 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      cache_from:
+        - type=registry,ref=backend:latest
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DATABASE_PATH=/app/data/sentiment_history.db
+      - PYTHONUNBUFFERED=1
     volumes:
       - sqlite-data:/app/data
     depends_on:
       redis:
         condition: service_healthy
+    networks:
+      - backend-network
     restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.0
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Celery Worker (for scheduled data collection)
   celery-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A celery_tasks worker --loglevel=info --concurrency=1 --max-tasks-per-child=1 --prefetch-multiplier=1
+      cache_from:
+        - type=registry,ref=backend:latest
+    command: celery -A celery_tasks worker --loglevel=info --concurrency=1 --max-tasks-per-child=10 --prefetch-multiplier=1 --pool=solo
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DATABASE_PATH=/app/data/sentiment_history.db
+      - PYTHONUNBUFFERED=1
+      - C_FORCE_ROOT=true
     volumes:
       - sqlite-data:/app/data
     depends_on:
@@ -41,58 +57,125 @@ services:
         condition: service_healthy
       backend:
         condition: service_healthy
+    networks:
+      - backend-network
     restart: unless-stopped
+    mem_limit: 1536m
+    cpus: 1.0
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A celery_tasks inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # Celery Beat (scheduler for hourly collection)
   celery-beat:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      cache_from:
+        - type=registry,ref=backend:latest
     command: celery -A celery_tasks beat --loglevel=info
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DATABASE_PATH=/app/data/sentiment_history.db
+      - PYTHONUNBUFFERED=1
     volumes:
       - sqlite-data:/app/data
+      - celerybeat-schedule:/app/schedule
     depends_on:
       redis:
         condition: service_healthy
+    networks:
+      - backend-network
     restart: unless-stopped
+    mem_limit: 192m
+    cpus: 0.3
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'celery.*beat' || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
 
   # Frontend (SvelteKit) - only service exposed to internet
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      cache_from:
+        - type=registry,ref=frontend:latest
     ports:
       - "3000:3000"
     environment:
       - PUBLIC_API_URL=http://backend:8000
+      - NODE_ENV=production
     depends_on:
       backend:
         condition: service_healthy
+    networks:
+      - backend-network
+      - frontend-network
     restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.8
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000 || exit 1"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Redis (message broker for Celery)
   redis:
     image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --save 60 1000
     volumes:
       - redis-data:/data
+    networks:
+      - backend-network
     restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.3
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
-      timeout: 5s
+      timeout: 3s
       retries: 3
       start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
 
 volumes:
   sqlite-data:
+    driver: local
   redis-data:
+    driver: local
+  celerybeat-schedule:
+    driver: local
+
+networks:
+  backend-network:
+    driver: bridge
+  frontend-network:
+    driver: bridge

@@ -7,6 +7,7 @@ from celery.schedules import crontab
 import os
 import sys
 import logging
+import gc
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -31,6 +32,10 @@ app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    # Worker memory management
+    worker_max_tasks_per_child=10,  # Restart worker after 10 tasks to clear memory
+    worker_prefetch_multiplier=1,  # Process one task at a time
+    task_acks_late=True,  # Acknowledge task after completion
     # Beat schedule for hourly data collection
     beat_schedule={
         "collect-sentiment-15min": {
@@ -105,16 +110,24 @@ def collect_region_data(region_id: str, region_name: str) -> dict:
         
         logger.info(f"Successfully collected {len(headlines)} headlines for {region_id}, score: {percentage_score:.1f}%")
         
+        # Store count before cleanup
+        headline_count = len(headlines)
+        
+        # Clean up memory
+        del scraper, raw_headlines, headlines, scores
+        gc.collect()
+        
         return {
             "success": True,
             "region": region_id,
             "score": percentage_score,
             "label": overall_label.value,
-            "headline_count": len(headlines)
+            "headline_count": headline_count
         }
         
     except Exception as e:
         logger.error(f"Error collecting data for {region_id}: {e}")
+        gc.collect()  # Clean up even on error
         return {"success": False, "region": region_id, "error": str(e)}
 
 
@@ -130,6 +143,17 @@ def collect_all_regions() -> dict:
     
     success_count = sum(1 for r in results.values() if r.get("success"))
     logger.info(f"Completed hourly collection: {success_count}/{len(REGIONS)} regions successful")
+    
+    # Unload model to free memory between batch runs
+    try:
+        from sentiment.analyzer import analyzer
+        analyzer.unload_model()
+    except Exception as e:
+        logger.warning(f"Failed to unload model: {e}")
+    
+    # Force garbage collection after processing all regions
+    gc.collect()
+    logger.info("Memory cleanup completed")
     
     return {
         "success": success_count == len(REGIONS),
