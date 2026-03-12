@@ -39,7 +39,9 @@ def collect_region_data(region_id: str, region_name: str) -> dict:
         headlines = []
         scores = []
 
-        for raw in raw_headlines:
+        # Iterate by popping from raw_headlines to immediately free up space
+        while raw_headlines:
+            raw = raw_headlines.pop(0)
             score, label = analyzer.analyze(raw["title"])
             scores.append(score)
             headlines.append(
@@ -51,25 +53,35 @@ def collect_region_data(region_id: str, region_name: str) -> dict:
                     "sentiment_label": label.value,
                 }
             )
-
+            
+        # raw_headlines is now empty and can be freed safely
+        del raw_headlines
+        
         _, overall_label, polarity_counts = analyzer.aggregate_sentiment(scores)
         percentage_score = analyzer.calculate_polarity_score(
             polarity_counts.bull_count,
             polarity_counts.bear_count,
         )
+        
+        # Free scores early
+        del scores
 
+        headline_count = len(headlines)
+        
         save_sentiment_snapshot(
             region_id=region_id,
             score=percentage_score,
             label=overall_label.value,
-            headline_count=len(headlines),
+            headline_count=headline_count,
             bull_count=polarity_counts.bull_count,
             bear_count=polarity_counts.bear_count,
             neutral_count=polarity_counts.neutral_count,
         )
+        
+        # Batch inserting large numbers of headlines might consume memory, but sqlite cursor executes it fast enough.
+        # Once save is complete, release it.
         save_headlines_batch(region_id, headlines)
 
-        headline_count = len(headlines)
         logger.info(
             "Successfully collected %s headlines for %s, score: %.1f%%",
             headline_count,
@@ -77,7 +89,7 @@ def collect_region_data(region_id: str, region_name: str) -> dict:
             percentage_score,
         )
 
-        del scraper, raw_headlines, headlines, scores
+        del scraper, headlines
         gc.collect()
 
         return {
@@ -127,14 +139,22 @@ def main() -> int:
 
     init_db()
 
-    if args.region:
-        result = collect_region_data(args.region, REGIONS[args.region])
-        print(json.dumps(result), flush=True)
-        return 0 if result.get("success") else 1
+    try:
+        if args.region:
+            result = collect_region_data(args.region, REGIONS[args.region])
+            print(json.dumps(result), flush=True)
+            return 0 if result.get("success") else 1
 
-    result = collect_all_regions()
-    print(json.dumps(result), flush=True)
-    return 0 if result.get("successful", 0) > 0 else 1
+        result = collect_all_regions()
+        print(json.dumps(result), flush=True)
+        return 0 if result.get("successful", 0) > 0 else 1
+    finally:
+        try:
+            from sentiment.analyzer import analyzer
+            analyzer.unload_model()
+        except Exception as exc:
+            logger.warning("Failed to unload model in main before subprocess exit: %s", exc)
+        gc.collect()
 
 
 if __name__ == "__main__":

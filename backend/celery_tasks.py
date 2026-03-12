@@ -37,6 +37,7 @@ app.conf.update(
     # Worker memory management
     worker_concurrency=1,
     worker_max_tasks_per_child=1,
+    worker_max_memory_per_child=200000, # Kill worker if memory exceeds ~200MB during a task
     worker_prefetch_multiplier=1,  # Process one task at a time
     task_acks_late=True,  # Acknowledge task after completion
     # Beat schedule for hourly data collection
