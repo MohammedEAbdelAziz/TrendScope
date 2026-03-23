@@ -1,8 +1,6 @@
-refactor: isolate sentiment inference in short-lived subprocess
+feat: performance enhancements
 
-- move scraping and ONNX inference into collection_runner.py
-- keep Celery worker focused on orchestration only
-- run collection in a short-lived subprocess so model memory is released on exit
-- make analyzer imports truly lazy so transformers/optimum are not loaded at worker idle
-- keep worker memory settings aligned for low-RAM operation
-- improve subprocess result parsing and error handling for collection tasks
+- Solved Suboptimal dictionary populating in nested loops
+- Removed Unused import 'get_trend_data'
+- Replaced the arrow function in the `$derived` store for `sortedHeadlines` with a `$derived.by` block.
+- Refactored `loadRegionDetails` to use `Promise.allSettled` to fetch trend data and AI insights concurrently instead of sequentially awaiting them.
