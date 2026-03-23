@@ -5,6 +5,7 @@ Uses SQLite for simplicity
 import sqlite3
 from datetime import datetime, timedelta
 from typing import Optional
+from collections import defaultdict
 import os
 import logging
 from pathlib import Path
@@ -271,15 +272,14 @@ def get_top_keywords(region_id: str, hours: int = 24, limit: int = 10) -> list[d
     conn.close()
     
     # Simple keyword extraction
-    keywords = {}
+    keywords = defaultdict(lambda: {"count": 0, "positive": 0, "negative": 0, "neutral": 0})
     for row in rows:
         words = row["title"].lower().split()
         for word in words:
             if len(word) > 4:  # Skip short words
-                if word not in keywords:
-                    keywords[word] = {"count": 0, "positive": 0, "negative": 0, "neutral": 0}
-                keywords[word]["count"] += 1
-                keywords[word][row["sentiment_label"]] += 1
+                keyword_data = keywords[word]
+                keyword_data["count"] += 1
+                keyword_data[row["sentiment_label"]] += 1
     
     # Sort by frequency
     sorted_keywords = sorted(keywords.items(), key=lambda x: x[1]["count"], reverse=True)
