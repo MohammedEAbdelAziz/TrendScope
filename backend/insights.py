@@ -1,11 +1,8 @@
 """
 AI Insights generator using historical data and keyword analysis
 """
-from database import get_trend_data, get_sentiment_change, get_top_keywords
+from database import get_sentiment_change, get_top_keywords
 from models import REGIONS
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 def generate_insights(region_id: str, current_score: float, current_label: str, headline_count: int) -> list[dict]:
