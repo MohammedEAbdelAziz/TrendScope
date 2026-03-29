@@ -161,27 +161,60 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Basic health check for Docker"""
-    return {"status": "healthy"}
-
-
-@app.get("/api/health")
-async def api_health():
-    """Detailed health check with database and scraper status"""
+    """Basic health check for Docker - checks database and Redis"""
     try:
         # Check database connection
         from database import get_db_connection
         conn = get_db_connection()
         conn.execute("SELECT 1")
         conn.close()
+        
+        # Check Redis connection
+        try:
+            import redis
+            redis_url = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
+            r = redis.from_url(redis_url, socket_connect_timeout=2)
+            r.ping()
+        except Exception as e:
+            logger.warning(f"Redis health check warning: {e}")
+            return {"status": "degraded", "message": "Redis connection issue"}
+        
+        return {"status": "healthy"}
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {"status": "unhealthy", "error": str(e)}, 503
+
+
+@app.get("/api/health")
+async def api_health():
+    """Detailed health check with database and system status"""
+    try:
+        # Check database connection
+        from database import get_db_connection
+        conn = get_db_connection()
+        conn.execute("SELECT 1")
+        db_row = conn.fetchone()
+        conn.close()
         db_status = "healthy"
     except Exception as e:
         db_status = f"error: {str(e)}"
     
+    try:
+        import redis
+        redis_url = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
+        r = redis.from_url(redis_url, socket_connect_timeout=2)
+        r.ping()
+        redis_status = "healthy"
+    except Exception as e:
+        redis_status = f"error: {str(e)}"
+    
+    all_healthy = db_status == "healthy" and redis_status == "healthy"
+    
     return {
-        "status": "healthy" if db_status == "healthy" else "degraded",
+        "status": "healthy" if all_healthy else "degraded",
         "database": db_status,
-        "regions": len(SCRAPERS),
+        "redis": redis_status,
+        "regions": len(REGIONS),
         "cache_size": len(cache)
     }
 
