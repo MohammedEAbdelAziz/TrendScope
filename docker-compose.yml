@@ -18,7 +18,7 @@ services:
       - sqlite-data:/app/data
     depends_on:
       redis:
-        condition: service_healthy
+        condition: service_started
     networks:
       - backend-network
     restart: unless-stopped
@@ -54,7 +54,7 @@ services:
       - sqlite-data:/app/data
     depends_on:
       redis:
-        condition: service_healthy
+        condition: service_started
     networks:
       - backend-network
     restart: unless-stopped
@@ -66,7 +66,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep -v grep | grep 'celery.*worker' && python /app/healthcheck.py || exit 1"]
+      test: ["CMD-SHELL", "ps aux | grep -v grep | grep 'celery.*worker' || exit 1"]
       interval: 60s
       timeout: 15s
       retries: 3
@@ -90,14 +90,14 @@ services:
       - celerybeat-schedule:/app/schedule
     depends_on:
       redis:
-        condition: service_healthy
+        condition: service_started
     networks:
       - backend-network
     restart: unless-stopped
     mem_limit: 192m
     cpus: 0.3
     healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep -v grep | grep 'celery.*beat' && python /app/healthcheck.py || exit 1"]
+      test: ["CMD-SHELL", "ps aux | grep -v grep | grep 'celery.*beat' || exit 1"]
       interval: 60s
       timeout: 15s
       retries: 3

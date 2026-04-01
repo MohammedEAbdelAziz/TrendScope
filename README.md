@@ -55,15 +55,15 @@ The dashboard will be available at `http://localhost:3000`
 
 Use dedicated liveness endpoints to avoid false negatives and silent timeouts:
 
-- Frontend liveness: `/healthz` on port `3000`
-- Backend liveness: `/health/live` on port `8000`
-- Backend readiness: `/health` (returns `503` when dependencies are degraded)
+- Frontend liveness: `/healthz` or `/health` on port `3000`
+- Backend liveness: `/health/live`, `/healthz`, or `/health` on port `8000`
+- Backend readiness diagnostics: `/health/ready` or `/api/health`
 
 Recommended behavior for reverse proxies/orchestrators:
 
 - Mark service healthy from liveness endpoints only.
 - Keep startup grace periods >= 45s for frontend and >= 60s for backend.
-- Do not block frontend startup on backend readiness; let frontend start and fail fast on API proxy calls.
+- Do not gate frontend or backend startup on dependency health; let the app start and expose degraded status in readiness diagnostics instead.
 
 Quick manual verification after deploy:
 
