@@ -1,81 +1,51 @@
 # TrendScope
 
-A high-performance real-time economic sentiment monitor that tracks market mood across 7 global regions using state-of-the-art sentiment analysis.
+TrendScope is a full-stack economic sentiment monitoring platform. It collects financial headlines, classifies sentiment with an ONNX-optimized model, and exposes regional trend data through an API and web dashboard.
 
-## What it does
+## Overview
 
-TrendScope monitors economic news from Google News RSS feeds every 15 minutes, analyzes headlines using a quantized FinancialBERT model, and generates a live "bull vs bear" optimism index. It provides a crystal-clear view of economic momentum across major global markets, filtering out the noise to focus on high-impact signals.
+The platform tracks sentiment across seven regions:
 
-## Regions tracked
+- Global
+- United States
+- European Union
+- Africa
+- Egypt
+- Saudi Arabia
+- Middle East
 
-- **Global** - Worldwide market trends
-- **United States** - Wall Street and Fed sentiment
-- **European Union** - Eurozone economic signals
-- **Africa** - Emerging market development
-- **Egypt** - Local economic indicators
-- **Saudi Arabia** - Vision 2030 and energy markets
-- **Middle East** - Regional trade and commerce
+Headline collection is scheduled with Celery Beat, and results are persisted for trend analysis and historical comparison.
 
-## Key Features
+## Architecture
 
-- **High-Resolution Tracking**: Data collected every 15 minutes for real-time reactivity.
-- **Micro-Quantized AI**: Powered by a distilled FinancialBERT (ONNX Int8) for professional-grade sentiment analysis.
-- **Memory Optimized**: Highly efficient "DB-first" architecture saving ~1GB of RAM vs standard ML deployments.
-- **Premium UI**: Modern, high-performance dashboard with horizontal scrolling trends and sticky reference axes.
-- **Mobile First**: Fully responsive layout designed for professional monitoring on any device.
-- **Dual Language**: Formal English and Arabic support (RTL).
+- Backend: FastAPI, Celery, Redis, SQLite
+- Sentiment inference: Distilled FinancialBERT exported to ONNX (quantized)
+- Frontend: SvelteKit
+- Deployment: Docker Compose
 
-## Tech stack
+## Repository Layout
 
-**Backend:** FastAPI + Celery + Redis + SQLite  
-**Sentiment Engine:** Distilled FinancialBERT (ONNX Runtime)  
-**Frontend:** SvelteKit + Vanilla CSS (Custom Design System)  
-**Infrastructure:** Dockerized for streamlined VPS deployment
+- backend: API, workers, model tooling, and data pipeline
+- frontend: SvelteKit dashboard and API proxy routes
+- docker-compose.yml: local and server orchestration
 
-## Getting Started
+## Quick Start (Docker)
 
-### 1. Build the AI Model
-
-To prepare the model for production (quantization):
+From repository root:
 
 ```bash
-cd backend
-python build_model.py
+docker compose up --build
 ```
 
-### 2. Run with Docker (Recommended)
+Default local endpoints:
 
-```bash
-docker-compose up --build
-```
+- Frontend: <http://localhost:3000>
+- Backend: <http://localhost:8000>
+- API docs: <http://localhost:8000/docs>
 
-The dashboard will be available at `http://localhost:3000`
+## Development Setup
 
-## Production Health Checks (Coolify)
-
-Use dedicated liveness endpoints to avoid false negatives and silent timeouts:
-
-- Frontend liveness: `/healthz` or `/health` on port `3000`
-- Backend liveness: `/health/live`, `/healthz`, or `/health` on port `8000`
-- Backend readiness diagnostics: `/health/ready` or `/api/health`
-
-Recommended behavior for reverse proxies/orchestrators:
-
-- Mark service healthy from liveness endpoints only.
-- Keep startup grace periods >= 45s for frontend and >= 60s for backend.
-- Do not gate frontend or backend startup on dependency health; let the app start and expose degraded status in readiness diagnostics instead.
-
-Quick manual verification after deploy:
-
-```bash
-curl -i http://localhost:3000/healthz
-curl -i http://localhost:8000/health/live
-curl -i http://localhost:8000/health
-```
-
-### 3. Manual Development
-
-**Backend:**
+### Backend
 
 ```bash
 cd backend
@@ -83,7 +53,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-**Frontend:**
+### Frontend
 
 ```bash
 cd frontend
@@ -91,21 +61,62 @@ npm install
 npm run dev
 ```
 
-## How sentiment analysis works
+## Model Build and Dependencies
 
-TrendScope uses a sophisticated two-stage pipeline:
+This repository separates runtime and model-build dependencies.
 
-1.  **Signal Isolation**: Headlines are passed through a noise filter that removes fluff (podcasts, guides, newsletters) to focus purely on economic events.
-2.  **AI Classification**: The remaining headlines are analyzed by a **FinancialBERT** model specifically trained on market data. Unlike basic keyword scrapers, it understands financial context (e.g., "interest rates hold steady" vs "holdings liquidated").
+- Runtime dependencies: backend/requirements.txt
+- Model build/export dependencies: backend/requirements.model-build.txt
 
-The final score is calculated using the **Optimism Ratio**:
+Use the model-build set only when rebuilding ONNX artifacts:
 
+```bash
+cd backend
+pip install -r requirements.model-build.txt
+python build_model.py
 ```
-Sentiment Score = Bullish Signals / (Bullish + Bearish Signals) × 100
+
+Note: model build dependencies may be significantly heavier than runtime dependencies.
+
+## Health Checks and Operations
+
+Use liveness endpoints for orchestrator health decisions:
+
+- Frontend liveness: /healthz or /health (port 3000)
+- Backend liveness: /health, /healthz, or /health/live (port 8000)
+
+Readiness diagnostics:
+
+- Backend readiness: /health/ready or /api/health
+
+Quick checks after deployment:
+
+```bash
+curl -i http://localhost:3000/healthz
+curl -i http://localhost:8000/health/live
+curl -i http://localhost:8000/health/ready
 ```
 
-Scores above 50% indicate an optimistic outlook, while scores below 50% signal bearish sentiment.
+## Coolify Notes
+
+- The frontend service must be reachable from Coolify's proxy network.
+- Compose includes an external network named coolify by default.
+- If your environment uses a different name, set COOLIFY_NETWORK before deployment.
+
+## Troubleshooting Gateway Timeouts
+
+If health appears green but the domain still times out, validate service reachability through the proxy path:
+
+```bash
+docker compose ps
+docker compose logs --tail=200 frontend
+docker compose logs --tail=200 backend
+curl -i http://localhost:3000/
+curl -i http://localhost:3000/healthz
+```
+
+In this situation, the common root cause is reverse-proxy networking/routing, not application liveness.
 
 ## License
 
-MIT - Created by [Mohammed Essam](https://mohammedeabdelaziz.github.io/)
+MIT. See LICENSE for details.

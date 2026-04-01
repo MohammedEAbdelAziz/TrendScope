@@ -120,12 +120,17 @@ services:
     environment:
       - PUBLIC_API_URL=http://backend:8000
       - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
+    expose:
+      - "3000"
     depends_on:
       backend:
         condition: service_started
     networks:
       - backend-network
       - frontend-network
+      - coolify
     restart: unless-stopped
     mem_limit: 384m
     cpus: 0.8
@@ -177,3 +182,6 @@ networks:
     driver: bridge
   frontend-network:
     driver: bridge
+  coolify:
+    external: true
+    name: ${COOLIFY_NETWORK:-coolify}

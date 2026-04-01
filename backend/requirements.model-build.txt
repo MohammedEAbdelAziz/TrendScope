@@ -1,0 +1,4 @@
+-r requirements.txt
+# Optional dependencies for rebuilding/exporting model artifacts from Hugging Face.
+# Not needed in production runtime containers that already include model_quantized/.
+optimum[onnxruntime]>=1.17.0
