@@ -37,11 +37,10 @@ From repository root:
 docker compose up --build
 ```
 
-Default local endpoints:
+This compose setup is production-oriented:
 
-- Frontend: <http://localhost:3000>
-- Backend: <http://localhost:8000>
-- API docs: <http://localhost:8000/docs>
+- Frontend is intended to be exposed by reverse proxy (Traefik/Coolify).
+- Backend, Redis, and Celery services are internal-only.
 
 ## Development Setup
 
@@ -92,16 +91,21 @@ Readiness diagnostics:
 Quick checks after deployment:
 
 ```bash
-curl -i http://localhost:3000/healthz
-curl -i http://localhost:8000/health/live
-curl -i http://localhost:8000/health/ready
+# External check (replace with your domain)
+curl -i https://your-domain.example/healthz
+
+# Internal container checks
+docker compose exec frontend wget -q -O - http://localhost:3000/healthz
+docker compose exec backend curl -i http://localhost:8000/health/live
+docker compose exec backend curl -i http://localhost:8000/health/ready
 ```
 
 ## Coolify Notes
 
-- The frontend service must be reachable from Coolify's proxy network.
-- Compose includes an external network named coolify by default.
-- If your environment uses a different name, set COOLIFY_NETWORK before deployment.
+- Assign your domain to the frontend service in Coolify.
+- Set the service port to 3000 in the domain configuration.
+- Do not expose backend/redis/celery services with domains or host ports.
+- Keep frontend health check path at /healthz.
 
 ## Troubleshooting Gateway Timeouts
 
@@ -111,8 +115,8 @@ If health appears green but the domain still times out, validate service reachab
 docker compose ps
 docker compose logs --tail=200 frontend
 docker compose logs --tail=200 backend
-curl -i http://localhost:3000/
-curl -i http://localhost:3000/healthz
+curl -i https://your-domain.example/
+curl -i https://your-domain.example/healthz
 ```
 
 In this situation, the common root cause is reverse-proxy networking/routing, not application liveness.
