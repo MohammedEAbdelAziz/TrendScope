@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -161,28 +162,54 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Basic health check for Docker - checks database and Redis"""
+    """Readiness check for Docker and orchestrators"""
     try:
         # Check database connection
         from database import get_db_connection
         conn = get_db_connection()
         conn.execute("SELECT 1")
         conn.close()
-        
-        # Check Redis connection
+
+        # Redis is optional for core read APIs but required for background jobs.
+        redis_ok = True
+        redis_message = "healthy"
         try:
             import redis
             redis_url = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
             r = redis.from_url(redis_url, socket_connect_timeout=2)
             r.ping()
+            r.close()
         except Exception as e:
+            redis_ok = False
+            redis_message = str(e)
             logger.warning(f"Redis health check warning: {e}")
-            return {"status": "degraded", "message": "Redis connection issue"}
-        
-        return {"status": "healthy"}
+
+        payload = {
+            "status": "healthy" if redis_ok else "degraded",
+            "checks": {
+                "database": "healthy",
+                "redis": "healthy" if redis_ok else "degraded"
+            }
+        }
+
+        if redis_ok:
+            return JSONResponse(status_code=200, content=payload)
+
+        # Backend stays reachable for read APIs, but readiness is degraded.
+        payload["checks"]["redis_message"] = redis_message
+        return JSONResponse(status_code=503, content=payload)
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        return {"status": "unhealthy", "error": str(e)}, 503
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "error": str(e)}
+        )
+
+
+@app.get("/health/live")
+async def health_live():
+    """Liveness check: process is up and can answer HTTP requests."""
+    return JSONResponse(status_code=200, content={"status": "ok"})
 
 
 @app.get("/api/health")

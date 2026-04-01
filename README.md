@@ -51,6 +51,28 @@ docker-compose up --build
 
 The dashboard will be available at `http://localhost:3000`
 
+## Production Health Checks (Coolify)
+
+Use dedicated liveness endpoints to avoid false negatives and silent timeouts:
+
+- Frontend liveness: `/healthz` on port `3000`
+- Backend liveness: `/health/live` on port `8000`
+- Backend readiness: `/health` (returns `503` when dependencies are degraded)
+
+Recommended behavior for reverse proxies/orchestrators:
+
+- Mark service healthy from liveness endpoints only.
+- Keep startup grace periods >= 45s for frontend and >= 60s for backend.
+- Do not block frontend startup on backend readiness; let frontend start and fail fast on API proxy calls.
+
+Quick manual verification after deploy:
+
+```bash
+curl -i http://localhost:3000/healthz
+curl -i http://localhost:8000/health/live
+curl -i http://localhost:8000/health
+```
+
 ### 3. Manual Development
 
 **Backend:**

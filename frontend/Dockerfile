@@ -44,8 +44,8 @@ ENV NODE_ENV=production \
     PORT=3000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD wget --spider -q http://localhost:3000 || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+    CMD wget -q -O - http://localhost:3000/healthz | grep -q '"status":"ok"' || exit 1
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
