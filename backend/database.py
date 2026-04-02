@@ -14,16 +14,38 @@ logger = logging.getLogger(__name__)
 
 # Use env var for Docker, fallback to local path for development
 DATABASE_PATH = os.getenv("DATABASE_PATH", os.path.join(os.path.dirname(__file__), "sentiment_history.db"))
+SQLITE_BUSY_TIMEOUT_MS = int(os.getenv("SQLITE_BUSY_TIMEOUT_MS", "30000"))
+SQLITE_MMAP_SIZE = int(os.getenv("SQLITE_MMAP_SIZE", "268435456"))  # 256 MB
+SQLITE_CACHE_SIZE_KB = int(os.getenv("SQLITE_CACHE_SIZE_KB", "65536"))  # 64 MB
+
+
+def _configure_sqlite_connection(conn: sqlite3.Connection) -> None:
+    """Apply SQLite pragmas for concurrent access and lower disk I/O."""
+    cursor = conn.cursor()
+    try:
+        journal_mode = cursor.execute("PRAGMA journal_mode=WAL").fetchone()
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
+        cursor.execute("PRAGMA temp_store=MEMORY")
+        cursor.execute(f"PRAGMA mmap_size={SQLITE_MMAP_SIZE}")
+        cursor.execute(f"PRAGMA cache_size=-{SQLITE_CACHE_SIZE_KB}")
+        cursor.execute("PRAGMA wal_autocheckpoint=1000")
+
+        if not journal_mode or str(journal_mode[0]).lower() != "wal":
+            logger.warning("SQLite journal_mode is not WAL (current=%s)", journal_mode)
+    finally:
+        cursor.close()
 
 
 def get_db_connection():
-    """Get database connection"""
+    """Get a fresh SQLite connection (no connection pooling)."""
     # Ensure the directory exists
     db_dir = os.path.dirname(DATABASE_PATH)
     if db_dir:
         Path(db_dir).mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH, timeout=max(1, SQLITE_BUSY_TIMEOUT_MS // 1000))
     conn.row_factory = sqlite3.Row
+    _configure_sqlite_connection(conn)
     return conn
 
 
@@ -116,18 +138,87 @@ def save_sentiment_snapshot(region_id: str, score: float, label: str, headline_c
         conn.close()
 
 
+def save_region_snapshot_and_headlines(
+    region_id: str,
+    score: float,
+    label: str,
+    headline_count: int,
+    bull_count: int,
+    bear_count: int,
+    neutral_count: int,
+    headlines: list[dict],
+):
+    """Persist one region's snapshot + headlines in one short transaction."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO sentiment_history (
+                region_id, sentiment_score, sentiment_label, headline_count,
+                bull_count, bear_count, neutral_count
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (region_id, score, label, headline_count, bull_count, bear_count, neutral_count),
+        )
+
+        if headlines:
+            cursor.executemany(
+                """
+                INSERT INTO headlines_history (region_id, title, source, url, sentiment_score, sentiment_label)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        region_id,
+                        h.get("title", ""),
+                        h.get("source", "Unknown"),
+                        h.get("url", "#"),
+                        h.get("sentiment_score", 0),
+                        h.get("sentiment_label", "neutral"),
+                    )
+                    for h in headlines
+                ],
+            )
+
+        conn.commit()
+        logger.info(
+            "Saved region transaction for %s: snapshot + %s headlines",
+            region_id,
+            len(headlines),
+        )
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 def save_headlines_batch(region_id: str, headlines: list[dict]):
     """Save headlines to history for AI analysis"""
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    for h in headlines:
-        cursor.execute("""
-            INSERT INTO headlines_history (region_id, title, source, url, sentiment_score, sentiment_label)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (region_id, h.get('title', ''), h.get('source', ''), h.get('url', ''), 
-              h.get('sentiment_score', 0), h.get('sentiment_label', 'neutral')))
-    
+
+    cursor.executemany(
+        """
+        INSERT INTO headlines_history (region_id, title, source, url, sentiment_score, sentiment_label)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                region_id,
+                h.get("title", ""),
+                h.get("source", "Unknown"),
+                h.get("url", "#"),
+                h.get("sentiment_score", 0),
+                h.get("sentiment_label", "neutral"),
+            )
+            for h in headlines
+        ],
+    )
+
     conn.commit()
     conn.close()
     logger.info(f"Saved {len(headlines)} headlines for {region_id}")

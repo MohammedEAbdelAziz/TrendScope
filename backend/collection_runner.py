@@ -14,7 +14,7 @@ import sys
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from database import init_db, save_headlines_batch, save_sentiment_snapshot
+from database import init_db, save_region_snapshot_and_headlines
 from models import REGIONS
 
 logging.basicConfig(level=logging.INFO)
@@ -68,7 +68,8 @@ def collect_region_data(region_id: str, region_name: str) -> dict:
 
         headline_count = len(headlines)
         
-        save_sentiment_snapshot(
+        # Keep DB lock window short: write only after all network and inference work is complete.
+        save_region_snapshot_and_headlines(
             region_id=region_id,
             score=percentage_score,
             label=overall_label.value,
@@ -76,11 +77,8 @@ def collect_region_data(region_id: str, region_name: str) -> dict:
             bull_count=polarity_counts.bull_count,
             bear_count=polarity_counts.bear_count,
             neutral_count=polarity_counts.neutral_count,
+            headlines=headlines,
         )
-        
-        # Batch inserting large numbers of headlines might consume memory, but sqlite cursor executes it fast enough.
-        # Once save is complete, release it.
-        save_headlines_batch(region_id, headlines)
 
         logger.info(
             "Successfully collected %s headlines for %s, score: %.1f%%",
